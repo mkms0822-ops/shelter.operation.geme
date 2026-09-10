@@ -3,277 +3,387 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shelter Operation Game｜避難所運営ゲーム</title>
+<title>避難所レイアウトプランナー｜Shelter Operation Studio</title>
 <style>
   :root{
-    --ink:#1a2430; --sub:#5f7080; --line:#d7e0e8; --bg:#e8edf1; --panel:#ffffff;
-    --navy:#12395e; --teal:#0f7d74; --amber:#e0902a; --red:#d24b3e; --violet:#7a5cc4; --green:#3f8a54;
+    --ink:#1b2733; --sub:#63727f; --line:#d3dde5; --bg:#eaeef1; --panel:#ffffff;
+    --navy:#123a5e; --steel:#3f6f8f; --plan:#eef4f8; --grid:#d7e3ec;
+    --general:#3f8ad1; --care:#8a5cc4; --med:#d24b3e; --pet:#c98a1e; --stock:#3f9a6a;
+    --toilet:#5b8fb0; --reception:#c05a2a; --area:#7a8a97;
     --shadow:0 2px 10px rgba(20,45,70,.10);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg)}
+  html,body{height:100%;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg);overflow:hidden}
   #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
 
-  header{background:linear-gradient(135deg,var(--navy),#0d2b47);color:#fff;padding:10px 18px;display:flex;align-items:center;gap:14px;flex:none}
-  header .logo{font-size:22px}
-  header h1{font-size:16px;font-weight:800;letter-spacing:.02em}
-  header h1 small{display:block;font-size:10.5px;font-weight:600;color:#9fc4d8;letter-spacing:.14em;margin-top:1px}
-  header .timer{margin-left:auto;font-variant-numeric:tabular-nums;font-size:22px;font-weight:800;letter-spacing:.04em;background:rgba(255,255,255,.12);padding:4px 14px;border-radius:8px}
-  header .hbtn{background:rgba(255,255,255,.14);border:0;color:#fff;font-weight:700;font-size:13px;border-radius:7px;padding:8px 12px;cursor:pointer;font-family:inherit}
-  header .hbtn:hover{background:rgba(255,255,255,.24)}
+  header{background:linear-gradient(135deg,var(--navy),#0d2b47);color:#fff;padding:9px 16px;display:flex;align-items:center;gap:12px;flex:none}
+  header .logo{font-size:20px}
+  header h1{font-size:15px;font-weight:800;letter-spacing:.02em}
+  header h1 small{display:block;font-size:10px;color:#a9c7db;font-weight:600;letter-spacing:.1em}
+  header .sp{flex:1}
+  header button{background:rgba(255,255,255,.14);border:0;color:#fff;font-weight:700;font-size:12.5px;border-radius:7px;padding:7px 11px;cursor:pointer;font-family:inherit}
+  header button:hover{background:rgba(255,255,255,.24)}
+  header button.primary{background:#2e7d5b}
+  header button.primary:hover{background:#379268}
+
+  /* フロアタブ */
+  .floortabs{display:flex;align-items:center;gap:6px;background:#dbe4ea;padding:6px 12px;flex:none;border-bottom:1px solid var(--line);overflow-x:auto}
+  .ftab{background:#fff;border:1.5px solid var(--line);border-radius:8px 8px 0 0;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--sub)}
+  .ftab.active{background:var(--plan);border-color:var(--steel);color:var(--navy);border-bottom-color:var(--plan)}
+  .ftab .del{margin-left:7px;color:#b34;opacity:.6;font-weight:800}
+  .ftab .del:hover{opacity:1}
+  .floortabs .addfloor{background:var(--navy);color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;flex:none}
 
   #main{flex:1;display:flex;min-height:0}
-  /* 平面図 */
-  #floor{flex:1;padding:14px;overflow:auto;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(120px,1fr);gap:10px}
-  .zone{background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:10px 11px;display:flex;flex-direction:column;transition:border-color .15s,background .15s;min-height:0}
-  .zone.drag{border-color:var(--teal);background:#e9f6f4}
-  .zone h3{font-size:13px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:6px}
-  .zone .cap{font-size:10px;font-weight:700;color:#fff;background:var(--sub);border-radius:10px;padding:1px 7px;margin-left:auto}
-  .zone .znote{font-size:10.5px;color:var(--sub);margin:3px 0 7px;line-height:1.4}
-  .zone.wide{grid-column:span 2}
-  .zone.iso{border-style:dashed;border-color:var(--red)}
-  .zone .placed{flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start}
-  .chip{font-size:10.5px;font-weight:700;border-radius:6px;padding:3px 7px;color:#fff;cursor:grab;line-height:1.3;max-width:100%}
-  .chip.person{background:var(--teal)} .chip.person.care{background:var(--violet)} .chip.person.med{background:var(--red)}
-  .chip.event{background:var(--amber)}
-  .chip .x{margin-left:5px;opacity:.8;cursor:pointer}
 
-  /* 右パネル：デッキ */
-  #deck{width:340px;flex:none;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
-  .deck-h{padding:12px 15px 8px;border-bottom:1px solid var(--line)}
-  .deck-h .prog{font-size:11px;color:var(--sub);font-weight:700}
-  .deck-h .bar{height:6px;background:var(--line);border-radius:3px;margin-top:6px;overflow:hidden}
-  .deck-h .bar span{display:block;height:100%;background:var(--teal);width:0;transition:width .3s}
-  .current{padding:15px;flex:none}
-  .cardbox{border-radius:14px;padding:16px;color:#fff;box-shadow:var(--shadow);cursor:grab;position:relative;user-select:none}
-  .cardbox.person{background:linear-gradient(135deg,var(--teal),#0b5f58)}
-  .cardbox.person.care{background:linear-gradient(135deg,var(--violet),#5a3fa0)}
-  .cardbox.person.med{background:linear-gradient(135deg,var(--red),#a5342a)}
-  .cardbox.event{background:linear-gradient(135deg,var(--amber),#b06d15)}
-  .cardbox .kind{font-size:10.5px;font-weight:800;letter-spacing:.1em;opacity:.9;text-transform:uppercase}
-  .cardbox .ttl{font-size:19px;font-weight:800;margin:5px 0 8px;line-height:1.25}
-  .cardbox .det{font-size:12.5px;line-height:1.6;opacity:.97}
-  .cardbox .meta{margin-top:10px;display:flex;flex-wrap:wrap;gap:5px}
-  .cardbox .m{font-size:10.5px;font-weight:700;background:rgba(255,255,255,.22);border-radius:6px;padding:2px 8px}
-  .cardbox .hint{margin-top:10px;font-size:11px;background:rgba(0,0,0,.14);border-radius:8px;padding:7px 9px;line-height:1.5}
-  .cardbox .hint b{font-weight:800}
-  .cardbox .grab{position:absolute;top:10px;right:12px;font-size:11px;opacity:.75}
-  .deck-controls{padding:0 15px 12px;display:flex;gap:8px}
-  .deck-controls button{flex:1;border:1.5px solid var(--line);background:#fff;color:var(--ink);font-weight:700;font-size:13px;border-radius:9px;padding:11px;cursor:pointer;font-family:inherit}
-  .deck-controls .next{background:var(--navy);border-color:var(--navy);color:#fff}
-  .deck-controls button:active{transform:scale(.97)}
-  .deck-controls button:disabled{opacity:.4;cursor:default}
-  .log{flex:1;overflow-y:auto;border-top:1px solid var(--line);padding:10px 15px}
-  .log h4{font-size:11px;color:var(--sub);font-weight:800;margin-bottom:7px;letter-spacing:.04em}
-  .log .li{font-size:11.5px;line-height:1.5;padding:5px 0;border-bottom:1px solid #eef2f6;color:#33404c}
-  .log .li b{color:var(--navy)}
-  .done{padding:15px;text-align:center;color:var(--sub);font-size:13px;line-height:1.7}
+  /* パレット */
+  #palette{width:216px;flex:none;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px}
+  #palette h2{font-size:11px;color:var(--sub);font-weight:800;letter-spacing:.05em;margin:4px 0 8px}
+  .pal-group{margin-bottom:14px}
+  .pal-item{display:flex;align-items:center;gap:9px;background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:7px;cursor:grab;font-size:12.5px;font-weight:700;user-select:none;transition:.1s}
+  .pal-item:hover{border-color:var(--steel);transform:translateX(2px)}
+  .pal-item:active{cursor:grabbing}
+  .pal-item .dot{width:12px;height:12px;border-radius:3px;flex:none}
+  .pal-item .sub{font-size:9.5px;color:var(--sub);font-weight:500}
+  .pal-hint{font-size:10.5px;color:var(--sub);line-height:1.6;background:#f4f8fb;border-radius:8px;padding:9px 10px;margin-top:4px}
 
-  /* 進行モーダル：導入 */
-  .intro{position:fixed;inset:0;background:rgba(12,30,50,.6);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
-  .intro .box{background:#fff;border-radius:16px;max-width:520px;padding:26px 26px 22px;max-height:88vh;overflow-y:auto}
-  .intro h2{font-size:20px;color:var(--navy);margin-bottom:4px}
-  .intro .en{font-size:11px;letter-spacing:.16em;color:var(--teal);font-weight:700;margin-bottom:14px}
-  .intro p{font-size:13.5px;line-height:1.75;color:#33404c;margin-bottom:10px}
-  .intro ol{margin:8px 0 14px 20px;font-size:13px;line-height:1.8;color:#33404c}
-  .intro .start{width:100%;background:var(--navy);color:#fff;border:0;border-radius:10px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
-  @media(max-width:760px){
-    #main{flex-direction:column} #deck{width:auto;max-height:52vh;border-left:0;border-top:1px solid var(--line)}
-    #floor{grid-template-columns:repeat(2,1fr)}
+  /* キャンバス */
+  #canvaswrap{flex:1;overflow:auto;background:var(--bg);position:relative}
+  #canvas{position:relative;width:1400px;height:1000px;margin:20px;background:var(--plan);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:40px 40px;border:2px solid var(--steel);border-radius:6px;box-shadow:var(--shadow)}
+  .zone{position:absolute;border:2px solid var(--steel);border-radius:8px;background:rgba(255,255,255,.72);backdrop-filter:blur(1px);overflow:hidden;min-width:80px;min-height:60px}
+  .zone .zhead{background:var(--steel);color:#fff;font-size:12px;font-weight:800;padding:4px 8px;cursor:move;display:flex;align-items:center;gap:6px}
+  .zone .zhead .zcap{margin-left:auto;font-size:10px;font-weight:700;background:rgba(255,255,255,.25);border-radius:8px;padding:0 7px}
+  .zone .zbody{padding:6px;font-size:11px;color:#33404c;position:relative;height:calc(100% - 26px)}
+  .zone textarea{width:100%;height:100%;border:0;background:transparent;resize:none;font-family:inherit;font-size:11px;color:#33404c;outline:none}
+  .zone .zresize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--steel) 50%);border-radius:0 0 6px 0}
+  .zone .zdel{cursor:pointer;opacity:.7}
+  .zone .zdel:hover{opacity:1}
+
+  /* 配置アイテム */
+  .item{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    border-radius:9px;color:#fff;font-size:11px;font-weight:800;cursor:move;padding:6px 8px;min-width:64px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.25);user-select:none}
+  .item .ic{font-size:17px;line-height:1}
+  .item .cnt{font-size:9.5px;font-weight:700;background:rgba(0,0,0,.18);border-radius:8px;padding:0 6px;margin-top:1px}
+  .item .idel{position:absolute;top:-7px;right:-7px;width:18px;height:18px;background:#fff;color:#d24b3e;border-radius:50%;font-size:12px;font-weight:900;display:none;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer}
+  .item:hover .idel{display:flex}
+
+  /* 右パネル（設定・カード） */
+  #side{width:290px;flex:none;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+  .side-tabs{display:flex;border-bottom:1px solid var(--line)}
+  .side-tabs button{flex:1;background:none;border:0;padding:11px;font-size:12.5px;font-weight:800;color:var(--sub);cursor:pointer;font-family:inherit;border-bottom:2px solid transparent}
+  .side-tabs button.on{color:var(--navy);border-bottom-color:var(--navy)}
+  .side-body{flex:1;overflow-y:auto;padding:14px}
+  .fld{margin-bottom:12px}
+  .fld label{display:block;font-size:11px;color:var(--sub);font-weight:700;margin-bottom:4px}
+  .fld input,.fld textarea{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:9px;font-size:13px;font-family:inherit}
+  .fld textarea{height:70px;resize:vertical}
+  .side-btn{width:100%;background:var(--navy);color:#fff;border:0;border-radius:9px;padding:11px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;margin-bottom:8px}
+  .side-btn.teal{background:var(--steel)}
+  .side-btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .cardbox{border:1px solid var(--line);border-left:4px solid var(--care);border-radius:9px;padding:12px;margin-bottom:10px;background:#fff}
+  .cardbox .ct{font-size:13.5px;font-weight:800;color:var(--navy);margin-bottom:4px}
+  .cardbox .cd{font-size:12px;color:#33404c;line-height:1.6}
+  .cardbox .ctag{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:var(--care);border-radius:10px;padding:1px 8px;margin-bottom:6px}
+  .muted{font-size:11.5px;color:var(--sub);line-height:1.7}
+  .empty{color:var(--sub);font-size:12px;text-align:center;padding:20px 8px;line-height:1.7}
+
+  @media(max-width:820px){
+    #palette{width:150px}
+    #side{width:220px}
   }
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <span class="logo">🏫</span>
-    <h1>避難所運営ゲーム<small>SHELTER OPERATION GAME</small></h1>
-    <button class="hbtn" onclick="toggleTimer()" id="timerBtn">▶ 開始</button>
-    <div class="timer" id="timer">00:00</div>
-    <button class="hbtn" onclick="resetGame()">リセット</button>
+    <span class="logo">🏢</span>
+    <h1>避難所レイアウトプランナー<small>SHELTER OPERATION STUDIO</small></h1>
+    <span class="sp"></span>
+    <button onclick="addZone()">＋ 部屋を追加</button>
+    <button onclick="saveLayout()" class="primary">💾 保存</button>
+    <button onclick="loadLayout()">📂 開く</button>
+    <button onclick="clearFloor()">🗑 クリア</button>
   </header>
 
-  <div id="main">
-    <div id="floor"></div>
+  <div class="floortabs" id="floortabs"></div>
 
-    <aside id="deck">
-      <div class="deck-h">
-        <div class="prog" id="prog">カード 0 / 0</div>
-        <div class="bar"><span id="progbar"></span></div>
+  <div id="main">
+    <!-- パレット -->
+    <div id="palette">
+      <div class="pal-group">
+        <h2>避難者・スペース</h2>
+        <div id="pal-people"></div>
       </div>
-      <div class="current" id="current"></div>
-      <div class="deck-controls">
-        <button onclick="skipCard()" id="skipBtn">保留（後で）</button>
-        <button class="next" onclick="nextCard()" id="nextBtn">次のカード ▶</button>
+      <div class="pal-group">
+        <h2>設備・機能</h2>
+        <div id="pal-facility"></div>
       </div>
-      <div class="log">
-        <h4>配置ログ</h4>
-        <div id="logList"></div>
+      <div class="pal-hint">アイテムを図面へドラッグして配置。配置後はドラッグで移動、右上の×で削除できます。</div>
+    </div>
+
+    <!-- キャンバス -->
+    <div id="canvaswrap">
+      <div id="canvas"></div>
+    </div>
+
+    <!-- 右パネル -->
+    <aside id="side">
+      <div class="side-tabs">
+        <button class="on" id="tab-set" onclick="switchSide('set')">選択中の設定</button>
+        <button id="tab-card" onclick="switchSide('card')">状況カード</button>
+      </div>
+      <div class="side-body" id="side-set">
+        <div id="selpanel"><div class="empty">部屋やアイテムを選ぶと、ここで名称・収容人数・メモを編集できます。</div></div>
+      </div>
+      <div class="side-body" id="side-card" style="display:none">
+        <button class="side-btn teal" onclick="drawCard()">🎴 状況カードを引く</button>
+        <div id="cardarea"><div class="empty">「状況カードを引く」で、実話ベースの課題が表示されます。<br>この状況にどう対応するか、図面を使って話し合いましょう。</div></div>
+        <div class="muted" style="margin-top:12px">※ カードはスプレッドシート（GAS）から読み込む設定にできます。未設定時は内蔵の例題が出ます。</div>
       </div>
     </aside>
   </div>
 </div>
 
-<!-- 導入モーダル -->
-<div class="intro" id="intro">
-  <div class="box">
-    <div class="en">SHELTER OPERATION GAME</div>
-    <h2>避難所運営ゲーム</h2>
-    <p>次々にやってくる避難者や、避難所で起きる出来事のカードを、平面図のどのスペースに割り当て、どう対応するかを、みんなで話し合って決めていく図上訓練です。</p>
-    <p><b>正解は一つではありません。</b>「なぜそこに配置したのか」「どう対応するか」を話し合う過程そのものが学びになります。</p>
-    <ol>
-      <li>右側に表示されるカードを読み上げます。</li>
-      <li>どのスペースに置くか、どう対応するかを全員で話し合います。</li>
-      <li>カードを左の平面図のスペースにドラッグして配置します。</li>
-      <li>「次のカード」で次に進みます。判断に迷うものは「保留」もできます。</li>
-    </ol>
-    <p style="font-size:12px;color:var(--sub)">進行役（ファシリテーター）が画面を操作し、参加者が議論する使い方を想定しています。タイマーで時間を区切ると緊張感が出ます。</p>
-    <button class="start" onclick="document.getElementById('intro').style.display='none'">はじめる</button>
-  </div>
-</div>
-
 <script>
-const DATA = {"people": [{"id": "P01", "title": "高齢の夫婦", "detail": "80代の夫と78歳の妻。夫は足が不自由で車いす。", "need": ["バリアフリー", "静かな場所"], "tag": "要配慮"}, {"id": "P02", "title": "乳児連れの母親", "detail": "生後3か月の赤ちゃんと母親。授乳と夜泣きへの配慮が必要。", "need": ["授乳スペース", "周囲への配慮"], "tag": "要配慮"}, {"id": "P03", "title": "妊婦", "detail": "妊娠8か月。長時間座っているのがつらい。", "need": ["横になれる場所", "トイレが近い"], "tag": "要配慮"}, {"id": "P04", "title": "外国人観光客", "detail": "英語を話す旅行者2名。日本語が通じない。", "need": ["多言語対応", "情報提供"], "tag": "言語"}, {"id": "P05", "title": "ペット連れの家族", "detail": "犬2匹を連れた4人家族。ペット同伴の可否を判断。", "need": ["ペットスペース", "動物が苦手な人と分離"], "tag": "ペット"}, {"id": "P06", "title": "車いすの単身者", "detail": "50代・車いす利用。自力でトイレ移動が難しい。", "need": ["バリアフリー", "介助動線"], "tag": "要配慮"}, {"id": "P07", "title": "認知症の高齢者", "detail": "85歳・軽度の認知症。目を離すと外へ出てしまう。", "need": ["見守り", "出入口から離す"], "tag": "要配慮"}, {"id": "P08", "title": "聴覚障害のある人", "detail": "40代・耳が聞こえない。放送での情報が届かない。", "need": ["筆談・文字情報", "視覚での案内"], "tag": "障害"}, {"id": "P09", "title": "持病のある人", "detail": "人工透析が必要な60代。定期的な通院・医療連携が要る。", "need": ["医療連携", "記録の把握"], "tag": "医療"}, {"id": "P10", "title": "小さな子ども連れ", "detail": "3歳と5歳の子を持つ父親。子どもが走り回る。", "need": ["キッズスペース", "安全確保"], "tag": "子ども"}, {"id": "P11", "title": "受験生", "detail": "高校3年生。静かに勉強できる場所を求めている。", "need": ["静かな学習スペース"], "tag": "一般"}, {"id": "P12", "title": "夜勤明けの看護師", "detail": "日中に睡眠が必要。昼間に休める環境が要る。", "need": ["昼間に休める場所", "静穏"], "tag": "一般"}, {"id": "P13", "title": "支援に来たボランティア", "detail": "手伝いを申し出る若者3名。役割の割り振りが必要。", "need": ["受付・役割分担"], "tag": "運営"}, {"id": "P14", "title": "要介護の親と介護者", "detail": "寝たきりの親と、その介護をする娘。介護の継続が必要。", "need": ["介護スペース", "福祉避難所検討"], "tag": "要配慮"}, {"id": "P15", "title": "アレルギーのある子ども", "detail": "小麦・卵アレルギーの子。配給食に注意が必要。", "need": ["食物アレルギー配慮", "記録"], "tag": "医療"}, {"id": "P16", "title": "単身の高齢男性", "detail": "70代・独居。周囲となじめず孤立しがち。", "need": ["声かけ", "孤立防止"], "tag": "要配慮"}], "events": [{"id": "E01", "title": "トイレが足りない", "detail": "仮設トイレが不足し、行列ができている。特に女性・高齢者から不満の声。", "points": ["数の確保", "動線と衛生", "女性・要配慮者への配慮"], "tag": "設備"}, {"id": "E02", "title": "報道機関が取材に来た", "detail": "テレビ局が避難所内を撮影したいと申し出た。", "points": ["プライバシー保護", "撮影範囲の線引き", "窓口の一本化"], "tag": "対応"}, {"id": "E03", "title": "物資が届いた", "detail": "水・毛布・食料がトラックで到着。置き場所と配布方法を決める。", "points": ["保管場所", "公平な配布", "記録"], "tag": "物資"}, {"id": "E04", "title": "感染症の疑い", "detail": "発熱・嘔吐の症状を訴える人が複数。", "points": ["隔離スペース", "動線分離", "保健所連携"], "tag": "衛生"}, {"id": "E05", "title": "ペットの鳴き声で苦情", "detail": "夜間、ペットの鳴き声で眠れないと苦情が出た。", "points": ["ペットゾーンの位置", "ルール決め", "当事者間の調整"], "tag": "トラブル"}, {"id": "E06", "title": "停電が発生", "detail": "夜間に停電。館内が真っ暗になり不安が広がる。", "points": ["照明確保", "安全確保", "情報の周知"], "tag": "設備"}, {"id": "E07", "title": "食物アレルギーの申し出", "detail": "配給食にアレルギー対応が必要な人がいると判明。", "points": ["原材料の把握", "代替食", "名簿管理"], "tag": "医療"}, {"id": "E08", "title": "要介護者の受け入れ", "detail": "一般避難所では対応が難しい重度の要介護者が来た。", "points": ["福祉避難所への移送検討", "当面の介護", "家族対応"], "tag": "福祉"}, {"id": "E09", "title": "喫煙・飲酒トラブル", "detail": "館内での喫煙・飲酒をめぐり口論が起きた。", "points": ["ルールの明示", "専用場所の設定", "冷静な仲裁"], "tag": "トラブル"}, {"id": "E10", "title": "安否確認の問い合わせ", "detail": "家族の安否を確認したい人が受付に殺到。", "points": ["名簿の扱い", "個人情報保護", "掲示・窓口"], "tag": "対応"}, {"id": "E11", "title": "ボランティアの申し出", "detail": "多数のボランティアが集まった。受け入れと調整が必要。", "points": ["受付", "役割分担", "過不足の管理"], "tag": "運営"}, {"id": "E12", "title": "子どもが体調を崩した", "detail": "避難所生活のストレスで子どもが発熱・不眠。", "points": ["医療連携", "キッズスペース", "心のケア"], "tag": "医療"}], "zones": [{"id": "Z1", "name": "体育館（一般）", "cap": "広い", "note": "多くの避難者の主な生活スペース"}, {"id": "Z2", "name": "和室・保健室", "cap": "少人数", "note": "要配慮者・体調不良者向け"}, {"id": "Z3", "name": "1階教室A", "cap": "中", "note": "子ども連れ・家族向け"}, {"id": "Z4", "name": "1階教室B", "cap": "中", "note": "学習・静養など目的別に"}, {"id": "Z5", "name": "多目的室", "cap": "中", "note": "授乳・医療・相談など"}, {"id": "Z6", "name": "昇降口・受付", "cap": "通路", "note": "受付・情報掲示・出入管理"}, {"id": "Z7", "name": "屋外・グラウンド", "cap": "広い", "note": "車中泊・ペット・物資置き場"}, {"id": "Z8", "name": "別室（要検討）", "cap": "隔離", "note": "感染症疑い・隔離が必要な場合"}]};
+// ===== 設定 =====
+// スプレッドシート＋GASでカードを配信する場合、URLを設定（未設定なら内蔵例題）
+var CARD_GAS_URL = 'https://script.google.com/macros/s/AKfycbyR9g0TeWemG82FEgXGAiK-XB4CB3RtfRgLSDaDw-DcRMIFeptCKZEAx_f_8FmryoZB9A/exec';
 
-// カードを混ぜて順番を作る（人とイベントを交互寄りに）
-function buildDeck(){
-  const ppl = DATA.people.map(p=>({...p,type:'person'}));
-  const evt = DATA.events.map(e=>({...e,type:'event'}));
-  shuffle(ppl); shuffle(evt);
-  const deck=[]; let i=0,j=0;
-  while(i<ppl.length||j<evt.length){
-    if(i<ppl.length){deck.push(ppl[i++]);}
-    if(i<ppl.length){deck.push(ppl[i++]);}
-    if(j<evt.length){deck.push(evt[j++]);}
+// アイテム定義
+var PEOPLE = [
+  {t:'一般避難者', ic:'👥', color:'var(--general)', cap:true, sub:'世帯・グループ'},
+  {t:'要配慮者', ic:'♿', color:'var(--care)', cap:true, sub:'高齢・障がい等'},
+  {t:'ペット同伴', ic:'🐾', color:'var(--pet)', cap:true, sub:'同伴スペース'},
+  {t:'同行避難者', ic:'🧑‍🦯', color:'var(--care)', cap:true, sub:'介助者と一緒'},
+  {t:'乳幼児・授乳', ic:'🍼', color:'var(--general)', cap:true, sub:'家族エリア'},
+  {t:'体調不良者', ic:'🤒', color:'var(--med)', cap:true, sub:'隔離を検討'},
+];
+var FACILITY = [
+  {t:'受付・本部', ic:'📋', color:'var(--reception)', cap:false},
+  {t:'救護所', ic:'🩹', color:'var(--med)', cap:false},
+  {t:'トイレ', ic:'🚻', color:'var(--toilet)', cap:false},
+  {t:'物資置き場', ic:'📦', color:'var(--stock)', cap:false},
+  {t:'給水所', ic:'🚰', color:'var(--toilet)', cap:false},
+  {t:'炊き出し', ic:'🍚', color:'var(--stock)', cap:false},
+  {t:'掲示板', ic:'📰', color:'var(--area)', cap:false},
+  {t:'相談窓口', ic:'💬', color:'var(--reception)', cap:false},
+];
+
+// 内蔵の状況カード例（実話ベースの型：背景→課題→論点）
+var CARDS = [
+  {tag:'夜間・要配慮', t:'認知症の方が夜間に出口へ向かう', d:'夜、認知症の高齢者が「家に帰る」と出入口へ。家族は疲れて眠っている。どこで見守り、誰が対応するか。'},
+  {tag:'衛生', t:'トイレの行列と衛生の悪化', d:'仮設トイレが不足し行列。特に女性・高齢者から不満。数・位置・動線・清掃をどう見直すか。'},
+  {tag:'ペット', t:'夜のペットの鳴き声で苦情', d:'ペット同伴者と、動物が苦手な人・アレルギーの人が近接。ゾーンの位置とルールをどう調整するか。'},
+  {tag:'医療', t:'発熱者が複数、感染の疑い', d:'発熱・嘔吐を訴える人が数名。一般スペースと動線をどう分け、どこに隔離を設けるか。'},
+  {tag:'対応', t:'報道機関が館内の撮影を希望', d:'テレビ局が避難所内の撮影を申し出た。被災者のプライバシーと、窓口の一本化をどう扱うか。'},
+  {tag:'物資', t:'物資が大量に届いた', d:'水・毛布・食料がトラックで到着。保管場所、公平な配布、記録の付け方をどう決めるか。'},
+  {tag:'要配慮', t:'重度の要介護者の受け入れ', d:'一般避難所では対応が難しい要介護者が来た。当面のケアと、福祉避難所への移送をどう判断するか。'},
+];
+
+// ===== 状態 =====
+var state = { floors:[], cur:0, sel:null };
+var canvas = document.getElementById('canvas');
+var dragKind = null; // パレットからのドラッグ内容
+
+function uid(){ return 'x'+Math.random().toString(36).slice(2,9); }
+
+// 初期フロア
+function init(){
+  state.floors = [ {name:'1階', zones:[], items:[]} ];
+  buildPalette(); renderFloors(); renderCanvas();
+}
+
+// ===== パレット =====
+function buildPalette(){
+  var pp=document.getElementById('pal-people'); pp.innerHTML='';
+  PEOPLE.forEach(function(o){ pp.appendChild(palEl(o,'people')); });
+  var pf=document.getElementById('pal-facility'); pf.innerHTML='';
+  FACILITY.forEach(function(o){ pf.appendChild(palEl(o,'facility')); });
+}
+function palEl(o,group){
+  var d=document.createElement('div'); d.className='pal-item'; d.draggable=true;
+  d.innerHTML='<span class="dot" style="background:'+o.color+'"></span><span>'+o.ic+' '+o.t+(o.sub?'<span class="sub">'+o.sub+'</span>':'')+'</span>';
+  d.addEventListener('dragstart',function(e){ dragKind=Object.assign({},o); e.dataTransfer.setData('text','item'); });
+  return d;
+}
+
+// ===== フロア =====
+function renderFloors(){
+  var ft=document.getElementById('floortabs'); ft.innerHTML='';
+  state.floors.forEach(function(f,i){
+    var b=document.createElement('button'); b.className='ftab'+(i===state.cur?' active':'');
+    b.innerHTML=f.name+(state.floors.length>1?'<span class="del" onclick="delFloor(event,'+i+')">×</span>':'');
+    b.addEventListener('click',function(e){ if(e.target.classList.contains('del'))return; state.cur=i; state.sel=null; renderFloors(); renderCanvas(); renderSel(); });
+    ft.appendChild(b);
+  });
+  var add=document.createElement('button'); add.className='addfloor'; add.textContent='＋ フロア追加';
+  add.onclick=addFloor; ft.appendChild(add);
+}
+function addFloor(){
+  var n=prompt('フロア名を入力（例：2階、グラウンド、体育館）', state.floors.length+1+'階');
+  if(n===null) return;
+  state.floors.push({name:n||('フロア'+(state.floors.length+1)), zones:[], items:[]});
+  state.cur=state.floors.length-1; state.sel=null;
+  renderFloors(); renderCanvas(); renderSel();
+}
+function delFloor(e,i){
+  e.stopPropagation();
+  if(state.floors.length<=1) return;
+  if(!confirm(state.floors[i].name+' を削除しますか？')) return;
+  state.floors.splice(i,1); if(state.cur>=state.floors.length) state.cur=state.floors.length-1;
+  state.sel=null; renderFloors(); renderCanvas(); renderSel();
+}
+function curFloor(){ return state.floors[state.cur]; }
+
+// ===== キャンバス描画 =====
+function renderCanvas(){
+  canvas.innerHTML='';
+  var f=curFloor();
+  f.zones.forEach(function(z){ canvas.appendChild(zoneEl(z)); });
+  f.items.forEach(function(it){ canvas.appendChild(itemEl(it)); });
+}
+
+// 部屋（ゾーン）
+function addZone(){
+  var z={id:uid(), name:'新しい部屋', cap:'', note:'', x:60, y:60, w:260, h:180};
+  curFloor().zones.push(z); renderCanvas(); selectZone(z.id);
+}
+function zoneEl(z){
+  var el=document.createElement('div'); el.className='zone'; el.style.left=z.x+'px'; el.style.top=z.y+'px'; el.style.width=z.w+'px'; el.style.height=z.h+'px'; el.dataset.id=z.id;
+  el.innerHTML='<div class="zhead"><span>'+z.name+'</span>'+(z.cap?'<span class="zcap">定員'+z.cap+'</span>':'')+'<span class="zdel" onclick="delZone(event,\''+z.id+'\')">🗑</span></div>'+
+    '<div class="zbody"><textarea placeholder="メモ（役割・注意点など）" oninput="zoneNote(\''+z.id+'\',this.value)">'+(z.note||'')+'</textarea><div class="zresize"></div></div>';
+  // 選択
+  el.addEventListener('mousedown',function(e){ if(e.target.tagName!=='TEXTAREA'){ selectZone(z.id); } });
+  // ヘッダドラッグで移動
+  var head=el.querySelector('.zhead');
+  head.addEventListener('mousedown',function(e){ startDragZone(e,z,el); });
+  // リサイズ
+  el.querySelector('.zresize').addEventListener('mousedown',function(e){ startResizeZone(e,z,el); });
+  return el;
+}
+function delZone(e,id){ e.stopPropagation(); var f=curFloor(); f.zones=f.zones.filter(function(z){return z.id!==id;}); if(state.sel&&state.sel.id===id)state.sel=null; renderCanvas(); renderSel(); }
+function zoneNote(id,v){ var z=curFloor().zones.find(function(z){return z.id===id;}); if(z) z.note=v; }
+
+function startDragZone(e,z,el){
+  e.preventDefault();
+  var sx=e.clientX, sy=e.clientY, ox=z.x, oy=z.y;
+  function mv(ev){ z.x=Math.max(0,ox+ev.clientX-sx); z.y=Math.max(0,oy+ev.clientY-sy); el.style.left=z.x+'px'; el.style.top=z.y+'px'; }
+  function up(){ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
+  document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+}
+function startResizeZone(e,z,el){
+  e.preventDefault(); e.stopPropagation();
+  var sx=e.clientX, sy=e.clientY, ow=z.w, oh=z.h;
+  function mv(ev){ z.w=Math.max(90,ow+ev.clientX-sx); z.h=Math.max(70,oh+ev.clientY-sy); el.style.width=z.w+'px'; el.style.height=z.h+'px'; }
+  function up(){ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
+  document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+}
+
+// アイテム
+function itemEl(it){
+  var el=document.createElement('div'); el.className='item'; el.style.left=it.x+'px'; el.style.top=it.y+'px'; el.style.background=it.color; el.dataset.id=it.id;
+  el.innerHTML='<span class="ic">'+it.ic+'</span><span>'+it.t+'</span>'+(it.cap&&it.count?'<span class="cnt">'+it.count+'人</span>':'')+'<span class="idel" onclick="delItem(event,\''+it.id+'\')">×</span>';
+  el.addEventListener('mousedown',function(e){ if(e.target.classList.contains('idel'))return; selectItem(it.id); startDragItem(e,it,el); });
+  return el;
+}
+function delItem(e,id){ e.stopPropagation(); var f=curFloor(); f.items=f.items.filter(function(i){return i.id!==id;}); if(state.sel&&state.sel.id===id)state.sel=null; renderCanvas(); renderSel(); }
+function startDragItem(e,it,el){
+  e.preventDefault();
+  var sx=e.clientX, sy=e.clientY, ox=it.x, oy=it.y;
+  function mv(ev){ it.x=Math.max(0,ox+ev.clientX-sx); it.y=Math.max(0,oy+ev.clientY-sy); el.style.left=it.x+'px'; el.style.top=it.y+'px'; }
+  function up(){ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
+  document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+}
+
+// パレットからのドロップ
+canvas.addEventListener('dragover',function(e){ e.preventDefault(); });
+canvas.addEventListener('drop',function(e){
+  e.preventDefault();
+  if(!dragKind) return;
+  var rect=canvas.getBoundingClientRect();
+  var x=e.clientX-rect.left-32, y=e.clientY-rect.top-24;
+  var it={id:uid(), t:dragKind.t, ic:dragKind.ic, color:dragKind.color, cap:!!dragKind.cap, count:dragKind.cap?10:0, x:Math.max(0,x), y:Math.max(0,y)};
+  curFloor().items.push(it); dragKind=null; renderCanvas(); selectItem(it.id);
+});
+
+// ===== 選択と設定パネル =====
+function selectZone(id){ state.sel={type:'zone', id:id}; renderSel(); }
+function selectItem(id){ state.sel={type:'item', id:id}; renderSel(); }
+function renderSel(){
+  var p=document.getElementById('selpanel');
+  if(!state.sel){ p.innerHTML='<div class="empty">部屋やアイテムを選ぶと、ここで名称・収容人数・メモを編集できます。</div>'; return; }
+  var f=curFloor();
+  if(state.sel.type==='zone'){
+    var z=f.zones.find(function(z){return z.id===state.sel.id;}); if(!z){state.sel=null;return renderSel();}
+    p.innerHTML=''+
+      '<div class="fld"><label>部屋の名前</label><input value="'+esc(z.name)+'" oninput="setZone(\''+z.id+'\',\'name\',this.value)"></div>'+
+      '<div class="fld"><label>収容人数（定員）</label><input type="number" min="0" value="'+(z.cap||'')+'" placeholder="例：50" oninput="setZone(\''+z.id+'\',\'cap\',this.value)"></div>'+
+      '<div class="fld"><label>メモ</label><textarea oninput="setZone(\''+z.id+'\',\'note\',this.value)" placeholder="役割・注意点・割り当てなど">'+esc(z.note||'')+'</textarea></div>'+
+      '<button class="side-btn ghost" onclick="delZone(event,\''+z.id+'\')">この部屋を削除</button>';
+  } else {
+    var it=f.items.find(function(i){return i.id===state.sel.id;}); if(!it){state.sel=null;return renderSel();}
+    p.innerHTML=''+
+      '<div class="fld"><label>名称</label><input value="'+esc(it.t)+'" oninput="setItem(\''+it.id+'\',\'t\',this.value)"></div>'+
+      (it.cap?'<div class="fld"><label>人数</label><input type="number" min="0" value="'+(it.count||0)+'" oninput="setItem(\''+it.id+'\',\'count\',this.value)"></div>':'')+
+      '<button class="side-btn ghost" onclick="delItem(event,\''+it.id+'\')">このアイテムを削除</button>';
   }
-  return deck;
 }
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
+function setZone(id,k,v){ var z=curFloor().zones.find(function(z){return z.id===id;}); if(z){ z[k]=(k==='cap')?(v.replace(/[^0-9]/g,'')):v; renderCanvas(); } }
+function setItem(id,k,v){ var it=curFloor().items.find(function(i){return i.id===id;}); if(it){ it[k]=(k==='count')?(v.replace(/[^0-9]/g,'')):v; renderCanvas(); } }
+function esc(s){ return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
-let deck=buildDeck(), idx=0, held=[], placements={}, logs=[];
-
-// 平面図を描画
-function renderFloor(){
-  const fl=document.getElementById('floor'); fl.innerHTML='';
-  DATA.zones.forEach(z=>{
-    const el=document.createElement('div');
-    el.className='zone'+((z.cap==='広い')?' wide':'')+((z.id==='Z8')?' iso':'');
-    el.dataset.zone=z.id;
-    el.innerHTML='<h3>'+z.name+'<span class="cap">'+z.cap+'</span></h3><div class="znote">'+z.note+'</div><div class="placed" id="placed-'+z.id+'"></div>';
-    el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drag');});
-    el.addEventListener('dragleave',()=>el.classList.remove('drag'));
-    el.addEventListener('drop',e=>{e.preventDefault();el.classList.remove('drag');onDrop(z.id);});
-    fl.appendChild(el);
-  });
-  // 既存配置を復元
-  Object.keys(placements).forEach(zid=>{
-    placements[zid].forEach(c=>addChip(zid,c));
-  });
+// ===== 右パネル タブ =====
+function switchSide(which){
+  document.getElementById('tab-set').classList.toggle('on',which==='set');
+  document.getElementById('tab-card').classList.toggle('on',which==='card');
+  document.getElementById('side-set').style.display=which==='set'?'block':'none';
+  document.getElementById('side-card').style.display=which==='card'?'block':'none';
 }
 
-function classFor(c){
-  if(c.type==='event') return 'event';
-  if(c.tag==='医療') return 'person med';
-  if(c.tag==='要配慮'||c.tag==='障害') return 'person care';
-  return 'person';
-}
-
-function renderCurrent(){
-  const cur=document.getElementById('current');
-  document.getElementById('prog').textContent='カード '+Math.min(idx+1,deck.length)+' / '+deck.length;
-  document.getElementById('progbar').style.width=(deck.length? (idx/deck.length*100):0)+'%';
-  if(idx>=deck.length){
-    cur.innerHTML='<div class="done">🎉 すべてのカードを配置しました。<br>平面図を見ながら、配置の理由と改善点をふり返りましょう。'+(held.length?'<br><br>保留中のカードが '+held.length+' 枚あります。':'')+'</div>';
-    document.getElementById('nextBtn').disabled=true; document.getElementById('skipBtn').disabled=(held.length===0);
-    if(held.length){ document.getElementById('skipBtn').textContent='保留を見る（'+held.length+'）'; document.getElementById('skipBtn').onclick=resumeHeld; }
+// ===== 状況カード =====
+function drawCard(){
+  var area=document.getElementById('cardarea');
+  if(CARD_GAS_URL){
+    area.innerHTML='<div class="empty">カードを読み込み中…</div>';
+    fetch(CARD_GAS_URL).then(function(r){return r.json();}).then(function(list){
+      if(list&&list.length){ showCard(list[Math.floor(Math.random()*list.length)]); }
+      else { showCard(CARDS[Math.floor(Math.random()*CARDS.length)]); }
+    }).catch(function(){ showCard(CARDS[Math.floor(Math.random()*CARDS.length)]); });
     return;
   }
-  const c=deck[idx];
-  const kind = c.type==='event'?'できごと / EVENT':'避難者 / PERSON';
-  let meta='';
-  if(c.type==='person'){ meta=(c.need||[]).map(n=>'<span class="m">'+n+'</span>').join(''); }
-  else { meta=(c.points||[]).map(n=>'<span class="m">'+n+'</span>').join(''); }
-  const hint = c.type==='event'
-    ? '<div class="hint"><b>話し合いの論点：</b>上のタグを手がかりに、対応と担当・場所を決めましょう。</div>'
-    : '<div class="hint"><b>配置のヒント：</b>この方に必要な配慮（上のタグ）に合うスペースへ。</div>';
-  cur.innerHTML='<div class="cardbox '+classFor(c)+'" draggable="true" id="dragcard">'+
-    '<span class="grab">⠿ ドラッグして配置</span>'+
-    '<div class="kind">'+kind+'</div><div class="ttl">'+c.title+'</div>'+
-    '<div class="det">'+c.detail+'</div>'+
-    (meta?'<div class="meta">'+meta+'</div>':'')+hint+'</div>';
-  const dc=document.getElementById('dragcard');
-  dc.addEventListener('dragstart',e=>{e.dataTransfer.setData('text','current');dragging=c;});
-  document.getElementById('nextBtn').disabled=false;
-  document.getElementById('skipBtn').disabled=false;
+  showCard(CARDS[Math.floor(Math.random()*CARDS.length)]);
+}
+function showCard(c){
+  document.getElementById('cardarea').innerHTML=
+    '<div class="cardbox"><span class="ctag">'+(c.tag||'状況')+'</span>'+
+    '<div class="ct">'+esc(c.t||c.title||'')+'</div>'+
+    '<div class="cd">'+esc(c.d||c.detail||'')+'</div></div>'+
+    '<div class="muted">この状況にどう対応しますか？ 図面の配置を動かし、部屋のメモに方針を書き込みながら話し合いましょう。正解は一つではありません。</div>';
 }
 
-let dragging=null;
-function onDrop(zid){
-  if(!dragging) return;
-  const c=dragging; dragging=null;
-  if(!placements[zid]) placements[zid]=[];
-  placements[zid].push(c);
-  addChip(zid,c);
-  const zoneName=DATA.zones.find(z=>z.id===zid).name;
-  addLog(c,zoneName);
-  // デッキから除く
-  if(idx<deck.length && deck[idx].id===c.id){ idx++; }
-  else { held=held.filter(h=>h.id!==c.id); }
-  renderCurrent();
+// ===== 保存・読み込み（端末内） =====
+function saveLayout(){
+  try{
+    localStorage.setItem('sos_layout', JSON.stringify(state.floors));
+    alert('保存しました（この端末に記録）。');
+  }catch(e){ alert('保存できませんでした。'); }
 }
-function addChip(zid,c){
-  const box=document.getElementById('placed-'+zid); if(!box)return;
-  const chip=document.createElement('div');
-  chip.className='chip '+classFor(c);
-  chip.textContent=c.title;
-  box.appendChild(chip);
+function loadLayout(){
+  try{
+    var d=localStorage.getItem('sos_layout');
+    if(!d){ alert('保存されたレイアウトがありません。'); return; }
+    state.floors=JSON.parse(d); state.cur=0; state.sel=null;
+    renderFloors(); renderCanvas(); renderSel();
+  }catch(e){ alert('読み込みに失敗しました。'); }
 }
-function addLog(c,zoneName){
-  logs.unshift({t:c.title,z:zoneName});
-  const ll=document.getElementById('logList');
-  const d=document.createElement('div'); d.className='li';
-  d.innerHTML='<b>'+c.title+'</b> → '+zoneName;
-  ll.insertBefore(d, ll.firstChild);
-}
-function nextCard(){ if(idx<deck.length){ idx++; renderCurrent(); } }
-function skipCard(){ if(idx<deck.length){ held.push(deck[idx]); idx++; renderCurrent(); } }
-function resumeHeld(){
-  if(!held.length) return;
-  const start=deck.length;   // 追加する位置＝現在の末尾
-  deck=deck.concat(held);    // 保留カードを末尾に戻す
-  held=[];
-  idx=start;                 // 最初の保留カードから再開
-  document.getElementById('skipBtn').textContent='保留（後で）';
-  document.getElementById('skipBtn').onclick=skipCard;
-  document.getElementById('nextBtn').disabled=false;
-  renderCurrent();
+function clearFloor(){
+  if(!confirm('このフロアの配置をすべて消しますか？')) return;
+  curFloor().zones=[]; curFloor().items=[]; state.sel=null; renderCanvas(); renderSel();
 }
 
-// タイマー
-let sec=0,timerId=null;
-function toggleTimer(){
-  const b=document.getElementById('timerBtn');
-  if(timerId){ clearInterval(timerId); timerId=null; b.textContent='▶ 再開'; }
-  else { timerId=setInterval(()=>{sec++;updTimer();},1000); b.textContent='⏸ 停止'; }
-}
-function updTimer(){
-  const m=String(Math.floor(sec/60)).padStart(2,'0'), s=String(sec%60).padStart(2,'0');
-  document.getElementById('timer').textContent=m+':'+s;
-}
-function resetGame(){
-  if(!confirm('最初からやり直しますか？配置とログは消えます。')) return;
-  deck=buildDeck(); idx=0; held=[]; placements={}; logs=[];
-  clearInterval(timerId); timerId=null; sec=0; updTimer();
-  document.getElementById('timerBtn').textContent='▶ 開始';
-  document.getElementById('logList').innerHTML='';
-  document.getElementById('skipBtn').textContent='保留（後で）';
-  document.getElementById('skipBtn').onclick=skipCard;
-  document.getElementById('nextBtn').disabled=false;
-  renderFloor(); renderCurrent();
-}
-
-renderFloor();
-renderCurrent();
+init();
 </script>
 </body>
 </html>
