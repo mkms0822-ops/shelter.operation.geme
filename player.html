@@ -133,9 +133,11 @@ var POLL_MS = 4000;          // 取得間隔
 var queue = [];              // 表示待ちイベント
 var showing = false;
 var history = [];
+var queued = {};             // 取得済みidの記録（二重登録防止）
+var currentEvId = null;      // 現在ポップアップ表示中のイベントid
 
-// 「どのidまで表示したか」をブラウザに記憶（再読み込みしても取りこぼさない）
-// テスト中も安定して動くよう、既読IDを保存する方式にする。
+// 「どのidまで表示したか（＝既読）」をブラウザに記憶。
+// 既読IDは "ポップアップを閉じたとき" にだけ進める（通信不安定でも取りこぼさない）。
 var SEEN_KEY = 'shelter_seen_id';
 var lastId = 0;
 try { lastId = parseInt(localStorage.getItem(SEEN_KEY) || '0', 10) || 0; } catch(e){ lastId = 0; }
@@ -164,6 +166,8 @@ function resetSeen(){
   saveSeen(0);
   queue = [];
   history = [];
+  queued = {};
+  currentEvId = null;
   dbg('既読をリセットしました。次回取得から全イベントを受信します。');
 }
 
@@ -185,19 +189,23 @@ function poll(){
   fetch(GAS_URL+'?action=poll&since='+lastId).then(function(r){ return r.json(); }).then(function(res){
     setConn(true);
     var n = (res.events && res.events.length) ? res.events.length : 0;
-    dbg('接続OK / 既読ID:'+lastId+' / 今回取得:'+n+'件 / サーバー最新ID:'+(res.lastId!=null?res.lastId:'?'));
+    dbg('接続OK / 既読ID:'+lastId+' / 未表示:'+queue.length+'件 / サーバー最新ID:'+(res.lastId!=null?res.lastId:'?'));
 
-    // since=lastId より新しいものが返ってくる。未読はすべてポップアップ対象。
+    // 未読イベントをキューに積む。※ここでは既読IDをまだ進めない。
+    // 「実際にポップアップを閉じたとき」に既読IDを確定させる（取りこぼし防止）。
     if(n){
       res.events.forEach(function(ev){
-        if(ev.id>lastId){ lastId=ev.id; saveSeen(lastId); }
+        // 二重登録防止：すでにキュー/履歴にある同idは無視
+        if(ev.id<=lastId) return;
+        if(queued[ev.id]) return;
+        queued[ev.id]=true;
         queue.push(ev);
         history.push(ev);
       });
       renderHistory();
       pump();
     }
-  }).catch(function(err){ setConn(false); dbg('通信エラー: '+err); });
+  }).catch(function(err){ setConn(false); dbg('通信エラー（次回再取得します）'); });
 }
 
 function pump(){
@@ -207,6 +215,7 @@ function pump(){
 
 function showPopup(ev){
   showing=true;
+  currentEvId = ev.id;   // 表示中イベントのidを覚えておく
   var sev = SEV[ev.severity] || SEV.info;
   var pop=document.getElementById('popup');
   pop.className='popup '+(ev.severity||'info');
@@ -222,6 +231,9 @@ function showPopup(ev){
 }
 
 function closePopup(){
+  // 見終わった＝この時点で初めて既読IDを確定・保存（取りこぼし防止）
+  if(currentEvId && currentEvId>lastId){ lastId=currentEvId; saveSeen(lastId); }
+  currentEvId = null;
   document.getElementById('overlay').classList.remove('show');
   showing=false;
   setTimeout(pump, 350); // 次のイベントがあれば続けて表示
