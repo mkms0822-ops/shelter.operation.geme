@@ -186,7 +186,7 @@ function beep(){
 
 function poll(){
   if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){ setConn(false); dbg('GAS_URL未設定'); return; }
-  fetch(GAS_URL+'?action=poll&since='+lastId, { redirect:'follow' })
+  fetch(GAS_URL+'?action=poll&since='+lastId)
     .then(function(r){ return r.text(); })   // まずテキストで受ける（リダイレクト後の本文も確実に取得）
     .then(function(txt){
       var res;
