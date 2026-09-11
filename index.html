@@ -3,387 +3,140 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>避難所レイアウトプランナー｜Shelter Operation Studio</title>
+<title>Shelter Operation Studio｜避難所運営机上訓練</title>
 <style>
   :root{
-    --ink:#1b2733; --sub:#63727f; --line:#d3dde5; --bg:#eaeef1; --panel:#ffffff;
-    --navy:#123a5e; --steel:#3f6f8f; --plan:#eef4f8; --grid:#d7e3ec;
-    --general:#3f8ad1; --care:#8a5cc4; --med:#d24b3e; --pet:#c98a1e; --stock:#3f9a6a;
-    --toilet:#5b8fb0; --reception:#c05a2a; --area:#7a8a97;
-    --shadow:0 2px 10px rgba(20,45,70,.10);
+    --navy:#123a5e;
+    --navy-d:#0d2b47;
+    --red:#d24b3e;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg);overflow:hidden}
-  #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
-
-  header{background:linear-gradient(135deg,var(--navy),#0d2b47);color:#fff;padding:9px 16px;display:flex;align-items:center;gap:12px;flex:none}
-  header .logo{font-size:20px}
-  header h1{font-size:15px;font-weight:800;letter-spacing:.02em}
-  header h1 small{display:block;font-size:10px;color:#a9c7db;font-weight:600;letter-spacing:.1em}
-  header .sp{flex:1}
-  header button{background:rgba(255,255,255,.14);border:0;color:#fff;font-weight:700;font-size:12.5px;border-radius:7px;padding:7px 11px;cursor:pointer;font-family:inherit}
-  header button:hover{background:rgba(255,255,255,.24)}
-  header button.primary{background:#2e7d5b}
-  header button.primary:hover{background:#379268}
-
-  /* フロアタブ */
-  .floortabs{display:flex;align-items:center;gap:6px;background:#dbe4ea;padding:6px 12px;flex:none;border-bottom:1px solid var(--line);overflow-x:auto}
-  .ftab{background:#fff;border:1.5px solid var(--line);border-radius:8px 8px 0 0;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--sub)}
-  .ftab.active{background:var(--plan);border-color:var(--steel);color:var(--navy);border-bottom-color:var(--plan)}
-  .ftab .del{margin-left:7px;color:#b34;opacity:.6;font-weight:800}
-  .ftab .del:hover{opacity:1}
-  .floortabs .addfloor{background:var(--navy);color:#fff;border:0;border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;flex:none}
-
-  #main{flex:1;display:flex;min-height:0}
-
-  /* パレット */
-  #palette{width:216px;flex:none;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:12px}
-  #palette h2{font-size:11px;color:var(--sub);font-weight:800;letter-spacing:.05em;margin:4px 0 8px}
-  .pal-group{margin-bottom:14px}
-  .pal-item{display:flex;align-items:center;gap:9px;background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;margin-bottom:7px;cursor:grab;font-size:12.5px;font-weight:700;user-select:none;transition:.1s}
-  .pal-item:hover{border-color:var(--steel);transform:translateX(2px)}
-  .pal-item:active{cursor:grabbing}
-  .pal-item .dot{width:12px;height:12px;border-radius:3px;flex:none}
-  .pal-item .sub{font-size:9.5px;color:var(--sub);font-weight:500}
-  .pal-hint{font-size:10.5px;color:var(--sub);line-height:1.6;background:#f4f8fb;border-radius:8px;padding:9px 10px;margin-top:4px}
-
-  /* キャンバス */
-  #canvaswrap{flex:1;overflow:auto;background:var(--bg);position:relative}
-  #canvas{position:relative;width:1400px;height:1000px;margin:20px;background:var(--plan);
-    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-    background-size:40px 40px;border:2px solid var(--steel);border-radius:6px;box-shadow:var(--shadow)}
-  .zone{position:absolute;border:2px solid var(--steel);border-radius:8px;background:rgba(255,255,255,.72);backdrop-filter:blur(1px);overflow:hidden;min-width:80px;min-height:60px}
-  .zone .zhead{background:var(--steel);color:#fff;font-size:12px;font-weight:800;padding:4px 8px;cursor:move;display:flex;align-items:center;gap:6px}
-  .zone .zhead .zcap{margin-left:auto;font-size:10px;font-weight:700;background:rgba(255,255,255,.25);border-radius:8px;padding:0 7px}
-  .zone .zbody{padding:6px;font-size:11px;color:#33404c;position:relative;height:calc(100% - 26px)}
-  .zone textarea{width:100%;height:100%;border:0;background:transparent;resize:none;font-family:inherit;font-size:11px;color:#33404c;outline:none}
-  .zone .zresize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--steel) 50%);border-radius:0 0 6px 0}
-  .zone .zdel{cursor:pointer;opacity:.7}
-  .zone .zdel:hover{opacity:1}
-
-  /* 配置アイテム */
-  .item{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-    border-radius:9px;color:#fff;font-size:11px;font-weight:800;cursor:move;padding:6px 8px;min-width:64px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.25);user-select:none}
-  .item .ic{font-size:17px;line-height:1}
-  .item .cnt{font-size:9.5px;font-weight:700;background:rgba(0,0,0,.18);border-radius:8px;padding:0 6px;margin-top:1px}
-  .item .idel{position:absolute;top:-7px;right:-7px;width:18px;height:18px;background:#fff;color:#d24b3e;border-radius:50%;font-size:12px;font-weight:900;display:none;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer}
-  .item:hover .idel{display:flex}
-
-  /* 右パネル（設定・カード） */
-  #side{width:290px;flex:none;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
-  .side-tabs{display:flex;border-bottom:1px solid var(--line)}
-  .side-tabs button{flex:1;background:none;border:0;padding:11px;font-size:12.5px;font-weight:800;color:var(--sub);cursor:pointer;font-family:inherit;border-bottom:2px solid transparent}
-  .side-tabs button.on{color:var(--navy);border-bottom-color:var(--navy)}
-  .side-body{flex:1;overflow-y:auto;padding:14px}
-  .fld{margin-bottom:12px}
-  .fld label{display:block;font-size:11px;color:var(--sub);font-weight:700;margin-bottom:4px}
-  .fld input,.fld textarea{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:9px;font-size:13px;font-family:inherit}
-  .fld textarea{height:70px;resize:vertical}
-  .side-btn{width:100%;background:var(--navy);color:#fff;border:0;border-radius:9px;padding:11px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;margin-bottom:8px}
-  .side-btn.teal{background:var(--steel)}
-  .side-btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
-  .cardbox{border:1px solid var(--line);border-left:4px solid var(--care);border-radius:9px;padding:12px;margin-bottom:10px;background:#fff}
-  .cardbox .ct{font-size:13.5px;font-weight:800;color:var(--navy);margin-bottom:4px}
-  .cardbox .cd{font-size:12px;color:#33404c;line-height:1.6}
-  .cardbox .ctag{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:var(--care);border-radius:10px;padding:1px 8px;margin-bottom:6px}
-  .muted{font-size:11.5px;color:var(--sub);line-height:1.7}
-  .empty{color:var(--sub);font-size:12px;text-align:center;padding:20px 8px;line-height:1.7}
-
-  @media(max-width:820px){
-    #palette{width:150px}
-    #side{width:220px}
+  html,body{height:100%}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+    background:#eef2f5;
+    min-height:100vh;min-height:100dvh;
+    display:flex;flex-direction:column;
   }
+
+  /* ビジュアル：画像をそのまま表示（加工しない） */
+  .hero{
+    flex:1;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:0;position:relative;
+  }
+
+  /* PC(横長)とスマホ(縦長)の出し分け */
+  .hero-wrap{position:relative;width:100%;max-width:1400px;margin:0 auto}
+  img.hero-img{width:100%;height:auto;display:block}
+  img.hero-pc{display:none}
+  img.hero-sp{display:block}
+
+  @media(min-width:820px){
+    img.hero-pc{display:block;border-radius:14px;box-shadow:0 10px 40px rgba(18,58,94,.18)}
+    img.hero-sp{display:none}
+    .hero{padding:24px}
+    .hero-wrap{max-width:1200px}
+  }
+
+  /* スタートボタン：画像の下（余白）に配置。画像は一切隠さない */
+  .startbar{
+    width:100%;
+    display:flex;justify-content:center;
+    padding:22px 16px 8px;
+  }
+  .start{
+    position:relative;
+    display:inline-flex;align-items:center;gap:12px;
+    background:var(--navy);
+    color:#fff;
+    border:0;
+    border-radius:999px;
+    font-family:inherit;
+    font-weight:800;
+    font-size:clamp(17px,2.4vw,24px);
+    letter-spacing:.04em;
+    padding:clamp(14px,1.8vw,20px) clamp(30px,4vw,54px);
+    cursor:pointer;
+    box-shadow:0 8px 24px rgba(13,43,71,.4), 0 2px 0 rgba(255,255,255,.15) inset;
+    transition:transform .12s ease, background .12s ease, box-shadow .12s ease;
+    text-decoration:none;
+  }
+  .start:hover{
+    background:var(--navy-d);
+    transform:translateY(-2px);
+    box-shadow:0 12px 30px rgba(13,43,71,.5);
+  }
+  .start:active{ transform:translateY(0) }
+  .start:focus-visible{ outline:3px solid #ffd34d; outline-offset:3px }
+  .start .tri{
+    width:0;height:0;
+    border-style:solid;
+    border-width:9px 0 9px 15px;
+    border-color:transparent transparent transparent #fff;
+    margin-left:2px;
+  }
+  /* ゆっくり脈打つ光輪で「ここから始まる」を示す（動きは1箇所だけ） */
+  .start::before{
+    content:"";
+    position:absolute;inset:0;
+    border-radius:999px;
+    box-shadow:0 0 0 0 rgba(18,58,94,.45);
+    animation:beat 2.6s ease-out infinite;
+  }
+  @keyframes beat{
+    0%{box-shadow:0 0 0 0 rgba(18,58,94,.45)}
+    70%{box-shadow:0 0 0 18px rgba(18,58,94,0)}
+    100%{box-shadow:0 0 0 0 rgba(18,58,94,0)}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .start::before{animation:none}
+    .start:hover{transform:none}
+  }
+
+  /* サブ操作（役割選択）を小さく添える */
+  .roles{
+    width:100%;
+    display:flex;justify-content:center;gap:10px;
+    padding:0 16px 22px;
+  }
+  .roles a{
+    font-size:clamp(11px,1.4vw,13px);
+    font-weight:700;
+    color:var(--navy);
+    background:#fff;
+    border:1px solid rgba(18,58,94,.25);
+    border-radius:999px;
+    padding:7px 16px;
+    text-decoration:none;
+  }
+  .roles a:hover{background:#eef2f5}
 </style>
 </head>
 <body>
-<div id="app">
-  <header>
-    <span class="logo">🏢</span>
-    <h1>避難所レイアウトプランナー<small>SHELTER OPERATION STUDIO</small></h1>
-    <span class="sp"></span>
-    <button onclick="addZone()">＋ 部屋を追加</button>
-    <button onclick="saveLayout()" class="primary">💾 保存</button>
-    <button onclick="loadLayout()">📂 開く</button>
-    <button onclick="clearFloor()">🗑 クリア</button>
-  </header>
 
-  <div class="floortabs" id="floortabs"></div>
-
-  <div id="main">
-    <!-- パレット -->
-    <div id="palette">
-      <div class="pal-group">
-        <h2>避難者・スペース</h2>
-        <div id="pal-people"></div>
-      </div>
-      <div class="pal-group">
-        <h2>設備・機能</h2>
-        <div id="pal-facility"></div>
-      </div>
-      <div class="pal-hint">アイテムを図面へドラッグして配置。配置後はドラッグで移動、右上の×で削除できます。</div>
+  <div class="hero">
+    <div class="hero-wrap">
+      <!-- スマホ用（縦長）：そのまま表示 -->
+      <img class="hero-img hero-sp" src="top_mobile.png" alt="Shelter Operation Studio 避難所運営机上訓練 支え合い、明日へ">
+      <!-- PC用（横長）：そのまま表示 -->
+      <img class="hero-img hero-pc" src="top_pc.jpg" alt="Shelter Operation Studio 避難所運営机上訓練 支え合い、明日へ">
     </div>
 
-    <!-- キャンバス -->
-    <div id="canvaswrap">
-      <div id="canvas"></div>
+    <!-- 画像の下に配置するスタートボタン（画像は隠さない） -->
+    <div class="startbar">
+      <a class="start" href="player.html">
+        <span class="tri"></span>
+        <span>訓練をはじめる</span>
+      </a>
     </div>
 
-    <!-- 右パネル -->
-    <aside id="side">
-      <div class="side-tabs">
-        <button class="on" id="tab-set" onclick="switchSide('set')">選択中の設定</button>
-        <button id="tab-card" onclick="switchSide('card')">状況カード</button>
-      </div>
-      <div class="side-body" id="side-set">
-        <div id="selpanel"><div class="empty">部屋やアイテムを選ぶと、ここで名称・収容人数・メモを編集できます。</div></div>
-      </div>
-      <div class="side-body" id="side-card" style="display:none">
-        <button class="side-btn teal" onclick="drawCard()">🎴 状況カードを引く</button>
-        <div id="cardarea"><div class="empty">「状況カードを引く」で、実話ベースの課題が表示されます。<br>この状況にどう対応するか、図面を使って話し合いましょう。</div></div>
-        <div class="muted" style="margin-top:12px">※ カードはスプレッドシート（GAS）から読み込む設定にできます。未設定時は内蔵の例題が出ます。</div>
-      </div>
-    </aside>
+    <!-- 役割選択（プレイヤー／ファシリテーター） -->
+    <div class="roles">
+      <a href="player.html">プレイヤー画面</a>
+      <a href="facilitator.html">ファシリテーター用</a>
+    </div>
   </div>
-</div>
 
-<script>
-// ===== 設定 =====
-// スプレッドシート＋GASでカードを配信する場合、URLを設定（未設定なら内蔵例題）
-var CARD_GAS_URL = 'https://script.google.com/macros/s/AKfycbyR9g0TeWemG82FEgXGAiK-XB4CB3RtfRgLSDaDw-DcRMIFeptCKZEAx_f_8FmryoZB9A/exec';
-
-// アイテム定義
-var PEOPLE = [
-  {t:'一般避難者', ic:'👥', color:'var(--general)', cap:true, sub:'世帯・グループ'},
-  {t:'要配慮者', ic:'♿', color:'var(--care)', cap:true, sub:'高齢・障がい等'},
-  {t:'ペット同伴', ic:'🐾', color:'var(--pet)', cap:true, sub:'同伴スペース'},
-  {t:'同行避難者', ic:'🧑‍🦯', color:'var(--care)', cap:true, sub:'介助者と一緒'},
-  {t:'乳幼児・授乳', ic:'🍼', color:'var(--general)', cap:true, sub:'家族エリア'},
-  {t:'体調不良者', ic:'🤒', color:'var(--med)', cap:true, sub:'隔離を検討'},
-];
-var FACILITY = [
-  {t:'受付・本部', ic:'📋', color:'var(--reception)', cap:false},
-  {t:'救護所', ic:'🩹', color:'var(--med)', cap:false},
-  {t:'トイレ', ic:'🚻', color:'var(--toilet)', cap:false},
-  {t:'物資置き場', ic:'📦', color:'var(--stock)', cap:false},
-  {t:'給水所', ic:'🚰', color:'var(--toilet)', cap:false},
-  {t:'炊き出し', ic:'🍚', color:'var(--stock)', cap:false},
-  {t:'掲示板', ic:'📰', color:'var(--area)', cap:false},
-  {t:'相談窓口', ic:'💬', color:'var(--reception)', cap:false},
-];
-
-// 内蔵の状況カード例（実話ベースの型：背景→課題→論点）
-var CARDS = [
-  {tag:'夜間・要配慮', t:'認知症の方が夜間に出口へ向かう', d:'夜、認知症の高齢者が「家に帰る」と出入口へ。家族は疲れて眠っている。どこで見守り、誰が対応するか。'},
-  {tag:'衛生', t:'トイレの行列と衛生の悪化', d:'仮設トイレが不足し行列。特に女性・高齢者から不満。数・位置・動線・清掃をどう見直すか。'},
-  {tag:'ペット', t:'夜のペットの鳴き声で苦情', d:'ペット同伴者と、動物が苦手な人・アレルギーの人が近接。ゾーンの位置とルールをどう調整するか。'},
-  {tag:'医療', t:'発熱者が複数、感染の疑い', d:'発熱・嘔吐を訴える人が数名。一般スペースと動線をどう分け、どこに隔離を設けるか。'},
-  {tag:'対応', t:'報道機関が館内の撮影を希望', d:'テレビ局が避難所内の撮影を申し出た。被災者のプライバシーと、窓口の一本化をどう扱うか。'},
-  {tag:'物資', t:'物資が大量に届いた', d:'水・毛布・食料がトラックで到着。保管場所、公平な配布、記録の付け方をどう決めるか。'},
-  {tag:'要配慮', t:'重度の要介護者の受け入れ', d:'一般避難所では対応が難しい要介護者が来た。当面のケアと、福祉避難所への移送をどう判断するか。'},
-];
-
-// ===== 状態 =====
-var state = { floors:[], cur:0, sel:null };
-var canvas = document.getElementById('canvas');
-var dragKind = null; // パレットからのドラッグ内容
-
-function uid(){ return 'x'+Math.random().toString(36).slice(2,9); }
-
-// 初期フロア
-function init(){
-  state.floors = [ {name:'1階', zones:[], items:[]} ];
-  buildPalette(); renderFloors(); renderCanvas();
-}
-
-// ===== パレット =====
-function buildPalette(){
-  var pp=document.getElementById('pal-people'); pp.innerHTML='';
-  PEOPLE.forEach(function(o){ pp.appendChild(palEl(o,'people')); });
-  var pf=document.getElementById('pal-facility'); pf.innerHTML='';
-  FACILITY.forEach(function(o){ pf.appendChild(palEl(o,'facility')); });
-}
-function palEl(o,group){
-  var d=document.createElement('div'); d.className='pal-item'; d.draggable=true;
-  d.innerHTML='<span class="dot" style="background:'+o.color+'"></span><span>'+o.ic+' '+o.t+(o.sub?'<span class="sub">'+o.sub+'</span>':'')+'</span>';
-  d.addEventListener('dragstart',function(e){ dragKind=Object.assign({},o); e.dataTransfer.setData('text','item'); });
-  return d;
-}
-
-// ===== フロア =====
-function renderFloors(){
-  var ft=document.getElementById('floortabs'); ft.innerHTML='';
-  state.floors.forEach(function(f,i){
-    var b=document.createElement('button'); b.className='ftab'+(i===state.cur?' active':'');
-    b.innerHTML=f.name+(state.floors.length>1?'<span class="del" onclick="delFloor(event,'+i+')">×</span>':'');
-    b.addEventListener('click',function(e){ if(e.target.classList.contains('del'))return; state.cur=i; state.sel=null; renderFloors(); renderCanvas(); renderSel(); });
-    ft.appendChild(b);
-  });
-  var add=document.createElement('button'); add.className='addfloor'; add.textContent='＋ フロア追加';
-  add.onclick=addFloor; ft.appendChild(add);
-}
-function addFloor(){
-  var n=prompt('フロア名を入力（例：2階、グラウンド、体育館）', state.floors.length+1+'階');
-  if(n===null) return;
-  state.floors.push({name:n||('フロア'+(state.floors.length+1)), zones:[], items:[]});
-  state.cur=state.floors.length-1; state.sel=null;
-  renderFloors(); renderCanvas(); renderSel();
-}
-function delFloor(e,i){
-  e.stopPropagation();
-  if(state.floors.length<=1) return;
-  if(!confirm(state.floors[i].name+' を削除しますか？')) return;
-  state.floors.splice(i,1); if(state.cur>=state.floors.length) state.cur=state.floors.length-1;
-  state.sel=null; renderFloors(); renderCanvas(); renderSel();
-}
-function curFloor(){ return state.floors[state.cur]; }
-
-// ===== キャンバス描画 =====
-function renderCanvas(){
-  canvas.innerHTML='';
-  var f=curFloor();
-  f.zones.forEach(function(z){ canvas.appendChild(zoneEl(z)); });
-  f.items.forEach(function(it){ canvas.appendChild(itemEl(it)); });
-}
-
-// 部屋（ゾーン）
-function addZone(){
-  var z={id:uid(), name:'新しい部屋', cap:'', note:'', x:60, y:60, w:260, h:180};
-  curFloor().zones.push(z); renderCanvas(); selectZone(z.id);
-}
-function zoneEl(z){
-  var el=document.createElement('div'); el.className='zone'; el.style.left=z.x+'px'; el.style.top=z.y+'px'; el.style.width=z.w+'px'; el.style.height=z.h+'px'; el.dataset.id=z.id;
-  el.innerHTML='<div class="zhead"><span>'+z.name+'</span>'+(z.cap?'<span class="zcap">定員'+z.cap+'</span>':'')+'<span class="zdel" onclick="delZone(event,\''+z.id+'\')">🗑</span></div>'+
-    '<div class="zbody"><textarea placeholder="メモ（役割・注意点など）" oninput="zoneNote(\''+z.id+'\',this.value)">'+(z.note||'')+'</textarea><div class="zresize"></div></div>';
-  // 選択
-  el.addEventListener('mousedown',function(e){ if(e.target.tagName!=='TEXTAREA'){ selectZone(z.id); } });
-  // ヘッダドラッグで移動
-  var head=el.querySelector('.zhead');
-  head.addEventListener('mousedown',function(e){ startDragZone(e,z,el); });
-  // リサイズ
-  el.querySelector('.zresize').addEventListener('mousedown',function(e){ startResizeZone(e,z,el); });
-  return el;
-}
-function delZone(e,id){ e.stopPropagation(); var f=curFloor(); f.zones=f.zones.filter(function(z){return z.id!==id;}); if(state.sel&&state.sel.id===id)state.sel=null; renderCanvas(); renderSel(); }
-function zoneNote(id,v){ var z=curFloor().zones.find(function(z){return z.id===id;}); if(z) z.note=v; }
-
-function startDragZone(e,z,el){
-  e.preventDefault();
-  var sx=e.clientX, sy=e.clientY, ox=z.x, oy=z.y;
-  function mv(ev){ z.x=Math.max(0,ox+ev.clientX-sx); z.y=Math.max(0,oy+ev.clientY-sy); el.style.left=z.x+'px'; el.style.top=z.y+'px'; }
-  function up(){ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
-  document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
-}
-function startResizeZone(e,z,el){
-  e.preventDefault(); e.stopPropagation();
-  var sx=e.clientX, sy=e.clientY, ow=z.w, oh=z.h;
-  function mv(ev){ z.w=Math.max(90,ow+ev.clientX-sx); z.h=Math.max(70,oh+ev.clientY-sy); el.style.width=z.w+'px'; el.style.height=z.h+'px'; }
-  function up(){ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
-  document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
-}
-
-// アイテム
-function itemEl(it){
-  var el=document.createElement('div'); el.className='item'; el.style.left=it.x+'px'; el.style.top=it.y+'px'; el.style.background=it.color; el.dataset.id=it.id;
-  el.innerHTML='<span class="ic">'+it.ic+'</span><span>'+it.t+'</span>'+(it.cap&&it.count?'<span class="cnt">'+it.count+'人</span>':'')+'<span class="idel" onclick="delItem(event,\''+it.id+'\')">×</span>';
-  el.addEventListener('mousedown',function(e){ if(e.target.classList.contains('idel'))return; selectItem(it.id); startDragItem(e,it,el); });
-  return el;
-}
-function delItem(e,id){ e.stopPropagation(); var f=curFloor(); f.items=f.items.filter(function(i){return i.id!==id;}); if(state.sel&&state.sel.id===id)state.sel=null; renderCanvas(); renderSel(); }
-function startDragItem(e,it,el){
-  e.preventDefault();
-  var sx=e.clientX, sy=e.clientY, ox=it.x, oy=it.y;
-  function mv(ev){ it.x=Math.max(0,ox+ev.clientX-sx); it.y=Math.max(0,oy+ev.clientY-sy); el.style.left=it.x+'px'; el.style.top=it.y+'px'; }
-  function up(){ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
-  document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
-}
-
-// パレットからのドロップ
-canvas.addEventListener('dragover',function(e){ e.preventDefault(); });
-canvas.addEventListener('drop',function(e){
-  e.preventDefault();
-  if(!dragKind) return;
-  var rect=canvas.getBoundingClientRect();
-  var x=e.clientX-rect.left-32, y=e.clientY-rect.top-24;
-  var it={id:uid(), t:dragKind.t, ic:dragKind.ic, color:dragKind.color, cap:!!dragKind.cap, count:dragKind.cap?10:0, x:Math.max(0,x), y:Math.max(0,y)};
-  curFloor().items.push(it); dragKind=null; renderCanvas(); selectItem(it.id);
-});
-
-// ===== 選択と設定パネル =====
-function selectZone(id){ state.sel={type:'zone', id:id}; renderSel(); }
-function selectItem(id){ state.sel={type:'item', id:id}; renderSel(); }
-function renderSel(){
-  var p=document.getElementById('selpanel');
-  if(!state.sel){ p.innerHTML='<div class="empty">部屋やアイテムを選ぶと、ここで名称・収容人数・メモを編集できます。</div>'; return; }
-  var f=curFloor();
-  if(state.sel.type==='zone'){
-    var z=f.zones.find(function(z){return z.id===state.sel.id;}); if(!z){state.sel=null;return renderSel();}
-    p.innerHTML=''+
-      '<div class="fld"><label>部屋の名前</label><input value="'+esc(z.name)+'" oninput="setZone(\''+z.id+'\',\'name\',this.value)"></div>'+
-      '<div class="fld"><label>収容人数（定員）</label><input type="number" min="0" value="'+(z.cap||'')+'" placeholder="例：50" oninput="setZone(\''+z.id+'\',\'cap\',this.value)"></div>'+
-      '<div class="fld"><label>メモ</label><textarea oninput="setZone(\''+z.id+'\',\'note\',this.value)" placeholder="役割・注意点・割り当てなど">'+esc(z.note||'')+'</textarea></div>'+
-      '<button class="side-btn ghost" onclick="delZone(event,\''+z.id+'\')">この部屋を削除</button>';
-  } else {
-    var it=f.items.find(function(i){return i.id===state.sel.id;}); if(!it){state.sel=null;return renderSel();}
-    p.innerHTML=''+
-      '<div class="fld"><label>名称</label><input value="'+esc(it.t)+'" oninput="setItem(\''+it.id+'\',\'t\',this.value)"></div>'+
-      (it.cap?'<div class="fld"><label>人数</label><input type="number" min="0" value="'+(it.count||0)+'" oninput="setItem(\''+it.id+'\',\'count\',this.value)"></div>':'')+
-      '<button class="side-btn ghost" onclick="delItem(event,\''+it.id+'\')">このアイテムを削除</button>';
-  }
-}
-function setZone(id,k,v){ var z=curFloor().zones.find(function(z){return z.id===id;}); if(z){ z[k]=(k==='cap')?(v.replace(/[^0-9]/g,'')):v; renderCanvas(); } }
-function setItem(id,k,v){ var it=curFloor().items.find(function(i){return i.id===id;}); if(it){ it[k]=(k==='count')?(v.replace(/[^0-9]/g,'')):v; renderCanvas(); } }
-function esc(s){ return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
-
-// ===== 右パネル タブ =====
-function switchSide(which){
-  document.getElementById('tab-set').classList.toggle('on',which==='set');
-  document.getElementById('tab-card').classList.toggle('on',which==='card');
-  document.getElementById('side-set').style.display=which==='set'?'block':'none';
-  document.getElementById('side-card').style.display=which==='card'?'block':'none';
-}
-
-// ===== 状況カード =====
-function drawCard(){
-  var area=document.getElementById('cardarea');
-  if(CARD_GAS_URL){
-    area.innerHTML='<div class="empty">カードを読み込み中…</div>';
-    fetch(CARD_GAS_URL).then(function(r){return r.json();}).then(function(list){
-      if(list&&list.length){ showCard(list[Math.floor(Math.random()*list.length)]); }
-      else { showCard(CARDS[Math.floor(Math.random()*CARDS.length)]); }
-    }).catch(function(){ showCard(CARDS[Math.floor(Math.random()*CARDS.length)]); });
-    return;
-  }
-  showCard(CARDS[Math.floor(Math.random()*CARDS.length)]);
-}
-function showCard(c){
-  document.getElementById('cardarea').innerHTML=
-    '<div class="cardbox"><span class="ctag">'+(c.tag||'状況')+'</span>'+
-    '<div class="ct">'+esc(c.t||c.title||'')+'</div>'+
-    '<div class="cd">'+esc(c.d||c.detail||'')+'</div></div>'+
-    '<div class="muted">この状況にどう対応しますか？ 図面の配置を動かし、部屋のメモに方針を書き込みながら話し合いましょう。正解は一つではありません。</div>';
-}
-
-// ===== 保存・読み込み（端末内） =====
-function saveLayout(){
-  try{
-    localStorage.setItem('sos_layout', JSON.stringify(state.floors));
-    alert('保存しました（この端末に記録）。');
-  }catch(e){ alert('保存できませんでした。'); }
-}
-function loadLayout(){
-  try{
-    var d=localStorage.getItem('sos_layout');
-    if(!d){ alert('保存されたレイアウトがありません。'); return; }
-    state.floors=JSON.parse(d); state.cur=0; state.sel=null;
-    renderFloors(); renderCanvas(); renderSel();
-  }catch(e){ alert('読み込みに失敗しました。'); }
-}
-function clearFloor(){
-  if(!confirm('このフロアの配置をすべて消しますか？')) return;
-  curFloor().zones=[]; curFloor().items=[]; state.sel=null; renderCanvas(); renderSel();
-}
-
-init();
-</script>
 </body>
 </html>

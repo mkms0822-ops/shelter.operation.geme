@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>イベント・コントロール｜ファシリテーター</title>
+<style>
+  :root{
+    --ink:#1b2733; --sub:#63727f; --line:#d3dde5; --bg:#eaeef1; --panel:#ffffff;
+    --navy:#123a5e; --steel:#3f6f8f; --plan:#eef4f8;
+    --info:#3f8ad1; --warn:#c98a1e; --danger:#d24b3e; --ok:#2e7d5b;
+    --shadow:0 2px 10px rgba(20,45,70,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg)}
+  #app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+
+  header{background:linear-gradient(135deg,var(--navy),#0d2b47);color:#fff;padding:11px 16px;display:flex;align-items:center;gap:12px;flex:none;position:sticky;top:0;z-index:5}
+  header .logo{font-size:22px}
+  header h1{font-size:16px;font-weight:800;letter-spacing:.02em}
+  header h1 small{display:block;font-size:10px;color:#a9c7db;font-weight:600;letter-spacing:.1em}
+  header .sp{flex:1}
+  .conn{font-size:11.5px;font-weight:700;background:rgba(255,255,255,.14);border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:7px}
+  .conn .led{width:9px;height:9px;border-radius:50%;background:#c05a2a}
+  .conn.ok .led{background:#5fd39a}
+
+  #main{flex:1;display:grid;grid-template-columns:1fr 340px;gap:16px;padding:16px;max-width:1200px;width:100%;margin:0 auto}
+  @media(max-width:860px){ #main{grid-template-columns:1fr} }
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+  .card h2{font-size:13px;color:var(--navy);font-weight:800;letter-spacing:.03em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .card h2 .n{font-size:11px;color:var(--sub);font-weight:700}
+
+  /* プリセットイベント */
+  .presets{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:560px){ .presets{grid-template-columns:1fr} }
+  .preset{border:1px solid var(--line);border-left:4px solid var(--info);border-radius:10px;padding:11px 12px;cursor:pointer;background:#fff;transition:.12s;position:relative}
+  .preset:hover{border-color:var(--steel);transform:translateY(-1px);box-shadow:0 3px 10px rgba(20,45,70,.12)}
+  .preset.warn{border-left-color:var(--warn)}
+  .preset.danger{border-left-color:var(--danger)}
+  .preset .ptag{display:inline-block;font-size:10px;font-weight:800;color:#fff;background:var(--info);border-radius:10px;padding:1px 9px;margin-bottom:6px}
+  .preset.warn .ptag{background:var(--warn)}
+  .preset.danger .ptag{background:var(--danger)}
+  .preset .pt{font-size:13.5px;font-weight:800;color:var(--ink);line-height:1.4;margin-bottom:3px}
+  .preset .pd{font-size:11.5px;color:var(--sub);line-height:1.5}
+  .preset .send{position:absolute;top:10px;right:10px;font-size:10.5px;font-weight:800;color:var(--navy);opacity:0;transition:.12s}
+  .preset:hover .send{opacity:1}
+
+  /* 自由入力 */
+  .fld{margin-bottom:11px}
+  .fld label{display:block;font-size:11px;color:var(--sub);font-weight:700;margin-bottom:4px}
+  .fld input,.fld textarea,.fld select{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:9px;font-size:13px;font-family:inherit;color:var(--ink)}
+  .fld textarea{height:64px;resize:vertical}
+  .sev-row{display:flex;gap:8px}
+  .sev-row label{flex:1;border:1.5px solid var(--line);border-radius:8px;padding:8px;text-align:center;font-size:12px;font-weight:800;cursor:pointer;color:var(--sub)}
+  .sev-row input{display:none}
+  .sev-row input:checked+span{}
+  .sev-opt.info.on{border-color:var(--info);color:var(--info);background:#eef6fd}
+  .sev-opt.warn.on{border-color:var(--warn);color:var(--warn);background:#fdf6e9}
+  .sev-opt.danger.on{border-color:var(--danger);color:var(--danger);background:#fdeeec}
+
+  .btn{width:100%;background:var(--navy);color:#fff;border:0;border-radius:9px;padding:12px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
+  .btn:hover{background:#0d2b47}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .btn.danger{background:var(--danger)}
+  .btn.danger:hover{background:#b23a2e}
+  .btn.sm{padding:8px;font-size:12px}
+
+  /* 送信ログ */
+  .log{max-height:360px;overflow-y:auto}
+  .logitem{border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin-bottom:8px;font-size:12px}
+  .logitem .lh{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+  .logitem .ltag{font-size:9.5px;font-weight:800;color:#fff;background:var(--info);border-radius:9px;padding:1px 7px}
+  .logitem.warn .ltag{background:var(--warn)} .logitem.danger .ltag{background:var(--danger)}
+  .logitem .ltime{margin-left:auto;color:var(--sub);font-size:10.5px;font-weight:700}
+  .logitem .llt{font-weight:800;color:var(--ink)}
+  .logitem .lld{color:var(--sub);line-height:1.5;margin-top:2px}
+  .empty{color:var(--sub);font-size:12px;text-align:center;padding:22px 8px;line-height:1.7}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ok);color:#fff;font-weight:800;font-size:13.5px;padding:12px 22px;border-radius:30px;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transition:.25s;z-index:50;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:var(--danger)}
+
+  /* ログイン画面 */
+  #gate{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),#0d2b47);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+  #gate .box{background:#fff;width:100%;max-width:360px;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.35);padding:28px 26px;text-align:center}
+  #gate .glogo{font-size:40px;margin-bottom:6px}
+  #gate h2{font-size:17px;font-weight:900;color:var(--navy);margin-bottom:4px}
+  #gate p{font-size:12px;color:var(--sub);line-height:1.6;margin-bottom:18px}
+  #gate input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:12px;font-size:15px;font-family:inherit;text-align:center;letter-spacing:.1em;margin-bottom:12px}
+  #gate input:focus{outline:none;border-color:var(--steel)}
+  #gate button{width:100%;background:var(--navy);color:#fff;border:0;border-radius:10px;padding:12px;font-weight:800;font-size:14.5px;cursor:pointer;font-family:inherit}
+  #gate button:hover{background:#0d2b47}
+  #gate .err{font-size:12px;color:var(--danger);font-weight:700;min-height:18px;margin-bottom:8px}
+  #gate .remember{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11.5px;color:var(--sub);margin-top:12px;cursor:pointer}
+  #gate.hide{display:none}
+</style>
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="gate">
+  <div class="box">
+    <div class="glogo">🔒</div>
+    <h2>ファシリテーター用</h2>
+    <p>この画面はイベントを送信する管理画面です。<br>合言葉を入力してください。</p>
+    <div class="err" id="gate-err"></div>
+    <input type="password" id="gate-pw" placeholder="合言葉" autocomplete="off"
+      onkeydown="if(event.key==='Enter')tryUnlock()">
+    <button id="gate-btn" onclick="tryUnlock()">入室する</button>
+    <label class="remember"><input type="checkbox" id="gate-remember" checked> この端末では次回から省略</label>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <span class="logo">🎛️</span>
+    <h1>イベント・コントロール<small>FACILITATOR CONTROL SYSTEM</small></h1>
+    <span class="sp"></span>
+    <div class="conn" id="conn"><span class="led"></span><span id="conntxt">未接続</span></div>
+    <button onclick="lockAgain()" style="background:rgba(255,255,255,.14);border:0;color:#fff;font-weight:700;font-size:11.5px;border-radius:20px;padding:6px 12px;cursor:pointer;font-family:inherit">🔒 ロック</button>
+  </header>
+
+  <div id="main">
+    <div>
+      <!-- プリセットイベント -->
+      <div class="card">
+        <h2>⚡ イベントを発生させる <span class="n">クリックでプレイヤー画面にポップアップ</span></h2>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <!-- 送信ログ（スマホでは下に来る） -->
+      <div class="card" id="logcard-mobile" style="display:none"></div>
+    </div>
+
+    <div>
+      <!-- 自由入力 -->
+      <div class="card">
+        <h2>✏️ 自由にイベントを作る</h2>
+        <div class="fld"><label>タグ（分類）</label><input id="f-tag" placeholder="例：医療 / 衛生 / 物資"></div>
+        <div class="fld"><label>タイトル</label><input id="f-title" placeholder="例：発熱者が複数、感染の疑い"></div>
+        <div class="fld"><label>詳細</label><textarea id="f-detail" placeholder="状況の説明。プレイヤーはこれを読んで対応します。"></textarea></div>
+        <div class="fld">
+          <label>深刻度</label>
+          <div class="sev-row" id="sevrow">
+            <label class="sev-opt info on"><input type="radio" name="sev" value="info" checked>情報</label>
+            <label class="sev-opt warn"><input type="radio" name="sev" value="warn">注意</label>
+            <label class="sev-opt danger"><input type="radio" name="sev" value="danger">緊急</label>
+          </div>
+        </div>
+        <button class="btn" id="sendbtn" onclick="sendCustom()">📣 このイベントを送信</button>
+      </div>
+
+      <!-- 送信ログ -->
+      <div class="card">
+        <h2>🗒 送信ログ</h2>
+        <div class="log" id="log"><div class="empty">まだイベントを送信していません。</div></div>
+        <button class="btn danger sm" style="margin-top:6px" onclick="clearSession()">🔄 セッションをリセット（全消去）</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 設定：GASのウェブアプリURLを設定 =====
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbyR9g0TeWemG82FEgXGAiK-XB4CB3RtfRgLSDaDw-DcRMIFeptCKZEAx_f_8FmryoZB9A/exec';
+
+// ===== 認証（サーバー側判定）=====
+// 合言葉は GAS 側の FACILITATOR_PASSWORD に設定します。ここには書きません。
+// ログイン成功でGASが発行したトークンを保持し、送信・リセット時に添付します。
+var AUTH_TOKEN = null;
+try { AUTH_TOKEN = localStorage.getItem('facil_token') || null; } catch(e){}
+
+// ログイン：合言葉をGASへ送って照合
+function tryUnlock(){
+  var v = document.getElementById('gate-pw').value;
+  if(!v){ return; }
+  if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){
+    document.getElementById('gate-err').textContent='GAS_URL が未設定です。';
+    return;
+  }
+  var btn = document.getElementById('gate-btn');
+  btn.disabled = true; btn.textContent = '確認中…';
+  document.getElementById('gate-err').textContent='';
+  fetch(GAS_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action:'login', password:v})
+  }).then(function(r){ return r.json(); }).then(function(res){
+    btn.disabled=false; btn.textContent='入室する';
+    if(res && res.ok && res.token){
+      AUTH_TOKEN = res.token;
+      if(document.getElementById('gate-remember').checked){
+        try{ localStorage.setItem('facil_token', AUTH_TOKEN); }catch(e){}
+      }
+      document.getElementById('gate').classList.add('hide');
+      document.getElementById('gate-pw').value='';
+      refreshLog();
+    } else {
+      document.getElementById('gate-err').textContent='合言葉が違います。';
+      document.getElementById('gate-pw').value='';
+      document.getElementById('gate-pw').focus();
+    }
+  }).catch(function(){
+    btn.disabled=false; btn.textContent='入室する';
+    document.getElementById('gate-err').textContent='通信エラー（URL/デプロイを確認）。';
+  });
+}
+
+// 手動で再ロック（トークン破棄）
+function lockAgain(){
+  AUTH_TOKEN = null;
+  try{ localStorage.removeItem('facil_token'); }catch(e){}
+  document.getElementById('gate-pw').value='';
+  document.getElementById('gate-err').textContent='';
+  document.getElementById('gate').classList.remove('hide');
+  document.getElementById('gate-pw').focus();
+}
+
+// 起動時：保存済みトークンがあれば、GASに有効か確認してから解除
+(function(){
+  if(AUTH_TOKEN && GAS_URL.indexOf('script.google.com')>=0){
+    fetch(GAS_URL+'?action=list&token='+encodeURIComponent(AUTH_TOKEN))
+      .then(function(r){ return r.json(); }).then(function(res){
+        if(res && res.ok){ document.getElementById('gate').classList.add('hide'); }
+        else { lockAgain(); }
+      }).catch(function(){ document.getElementById('gate-pw').focus(); });
+  } else {
+    document.getElementById('gate-pw').focus();
+  }
+})();
+
+// プリセットイベント（避難所運営の実話ベース）
+var PRESETS = [
+  {tag:'夜間・要配慮', severity:'warn', title:'認知症の方が夜間に出口へ向かう', detail:'夜、認知症の高齢者が「家に帰る」と出入口へ。家族は疲れて眠っている。どこで見守り、誰が対応する？'},
+  {tag:'衛生', severity:'warn', title:'トイレの行列と衛生の悪化', detail:'仮設トイレが不足し行列。特に女性・高齢者から不満。数・位置・動線・清掃をどう見直す？'},
+  {tag:'ペット', severity:'info', title:'夜のペットの鳴き声で苦情', detail:'ペット同伴者と、動物が苦手な人・アレルギーの人が近接。ゾーンの位置とルールをどう調整する？'},
+  {tag:'医療', severity:'danger', title:'発熱者が複数、感染の疑い', detail:'発熱・嘔吐を訴える人が数名。一般スペースと動線をどう分け、どこに隔離を設ける？'},
+  {tag:'対応', severity:'info', title:'報道機関が館内の撮影を希望', detail:'テレビ局が避難所内の撮影を申し出た。被災者のプライバシーと、窓口の一本化をどう扱う？'},
+  {tag:'物資', severity:'info', title:'物資が大量に届いた', detail:'水・毛布・食料がトラックで到着。保管場所、公平な配布、記録の付け方をどう決める？'},
+  {tag:'要配慮', severity:'warn', title:'重度の要介護者の受け入れ', detail:'一般避難所では対応が難しい要介護者が来た。当面のケアと、福祉避難所への移送をどう判断する？'},
+  {tag:'ライフライン', severity:'danger', title:'停電が発生した', detail:'夜間に停電。照明・情報・医療機器に影響。優先順位と、非常電源・懐中電灯の配分をどうする？'},
+  {tag:'安全', severity:'danger', title:'余震で天井材が落下', detail:'大きな余震があり、一部で天井材が落下。負傷者確認と、危険エリアの立入制限をどう指示する？'},
+  {tag:'受付', severity:'info', title:'避難者が一度に大勢到着', detail:'バスで避難者が続々到着し受付が混雑。受付の増設・動線・要配慮者の優先をどう捌く？'},
+  {tag:'トラブル', severity:'warn', title:'場所取り・スペースの争い', detail:'良い場所をめぐり住民同士でトラブル。区画のルールと、公平な割り当てをどう決める？'},
+  {tag:'情報', severity:'info', title:'デマが広がっている', detail:'「物資がもう来ない」等のうわさが拡散。正確な情報の掲示・周知の仕組みをどう作る？'},
+];
+
+var GAS_OK = false;
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, err){
+  var t=document.getElementById('toast'); t.textContent=msg;
+  t.className='toast show'+(err?' err':''); setTimeout(function(){ t.className='toast'; }, 2200);
+}
+function setConn(ok){
+  GAS_OK=ok;
+  var c=document.getElementById('conn'); c.className='conn'+(ok?' ok':'');
+  document.getElementById('conntxt').textContent = ok ? '接続OK' : '未接続 / URL未設定';
+}
+
+// プリセット描画
+function buildPresets(){
+  var box=document.getElementById('presets');
+  box.innerHTML='';
+  PRESETS.forEach(function(p){
+    var d=document.createElement('div');
+    d.className='preset '+(p.severity==='danger'?'danger':p.severity==='warn'?'warn':'');
+    d.innerHTML='<span class="ptag">'+esc(p.tag)+'</span><span class="send">送信 ▶</span>'+
+      '<div class="pt">'+esc(p.title)+'</div><div class="pd">'+esc(p.detail)+'</div>';
+    d.onclick=function(){ send(p); };
+    box.appendChild(d);
+  });
+}
+
+// 深刻度トグルの見た目
+document.addEventListener('change', function(e){
+  if(e.target && e.target.name==='sev'){
+    document.querySelectorAll('.sev-opt').forEach(function(el){ el.classList.remove('on'); });
+    e.target.parentElement.classList.add('on');
+  }
+});
+
+// 送信（共通）
+function send(ev){
+  if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){
+    toast('GAS_URL が未設定です', true); return;
+  }
+  var body = { action:'send', token:AUTH_TOKEN, tag:ev.tag, title:ev.title, detail:ev.detail, severity:ev.severity||'info', target:'all' };
+  fetch(GAS_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'}, // プリフライト回避
+    body: JSON.stringify(body)
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if(res && res.ok){ toast('送信しました：'+ev.title); setConn(true); refreshLog(); }
+    else if(res && res.error==='unauthorized'){ toast('セッションが切れました。再ログインしてください', true); lockAgain(); }
+    else { toast('送信に失敗しました', true); }
+  }).catch(function(){ toast('通信エラー（URL/デプロイを確認）', true); setConn(false); });
+}
+
+function sendCustom(){
+  var title=document.getElementById('f-title').value.trim();
+  if(!title){ toast('タイトルを入力してください', true); return; }
+  var sev=document.querySelector('input[name=sev]:checked').value;
+  send({
+    tag: document.getElementById('f-tag').value.trim() || '状況',
+    title: title,
+    detail: document.getElementById('f-detail').value.trim(),
+    severity: sev
+  });
+  document.getElementById('f-title').value='';
+  document.getElementById('f-detail').value='';
+}
+
+// 送信ログの取得
+function refreshLog(){
+  if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){ setConn(false); return; }
+  if(!AUTH_TOKEN){ return; } // 未ログイン時は取得しない
+  fetch(GAS_URL+'?action=list&token='+encodeURIComponent(AUTH_TOKEN)).then(function(r){ return r.json(); }).then(function(res){
+    if(res && res.error==='unauthorized'){ setConn(true); lockAgain(); return; }
+    setConn(true);
+    var log=document.getElementById('log');
+    if(!res.events || !res.events.length){ log.innerHTML='<div class="empty">まだイベントを送信していません。</div>'; return; }
+    log.innerHTML = res.events.slice().reverse().map(function(ev){
+      var cls = ev.severity==='danger'?'danger':ev.severity==='warn'?'warn':'';
+      return '<div class="logitem '+cls+'"><div class="lh"><span class="ltag">'+esc(ev.tag)+'</span>'+
+        '<span class="ltime">'+esc(ev.time)+'</span></div>'+
+        '<div class="llt">'+esc(ev.title)+'</div>'+
+        (ev.detail?'<div class="lld">'+esc(ev.detail)+'</div>':'')+'</div>';
+    }).join('');
+  }).catch(function(){ setConn(false); });
+}
+
+function clearSession(){
+  if(!confirm('送信済みイベントをすべて消去します。よろしいですか？')) return;
+  fetch(GAS_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action:'clear', token:AUTH_TOKEN})
+  }).then(function(r){ return r.json(); }).then(function(res){
+    if(res && res.error==='unauthorized'){ toast('セッションが切れました。再ログインしてください', true); lockAgain(); return; }
+    toast('セッションをリセットしました'); refreshLog();
+  }).catch(function(){ toast('リセットに失敗しました', true); });
+}
+
+buildPresets();
+refreshLog();
+setInterval(refreshLog, 8000);
+</script>
+</body>
+</html>

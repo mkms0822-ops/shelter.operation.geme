@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>プレイヤー画面｜避難所ゲーム</title>
+<style>
+  :root{
+    --ink:#1b2733; --sub:#63727f; --line:#d3dde5; --bg:#eaeef1; --panel:#ffffff;
+    --navy:#123a5e; --steel:#3f6f8f;
+    --info:#3f8ad1; --warn:#c98a1e; --danger:#d24b3e; --ok:#2e7d5b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg)}
+  #app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+
+  header{background:linear-gradient(135deg,var(--navy),#0d2b47);color:#fff;padding:11px 16px;display:flex;align-items:center;gap:12px;flex:none}
+  header .logo{font-size:22px}
+  header h1{font-size:16px;font-weight:800}
+  header h1 small{display:block;font-size:10px;color:#a9c7db;font-weight:600;letter-spacing:.1em}
+  header .sp{flex:1}
+  .conn{font-size:11.5px;font-weight:700;background:rgba(255,255,255,.14);border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:7px}
+  .conn .led{width:9px;height:9px;border-radius:50%;background:#c05a2a}
+  .conn.ok .led{background:#5fd39a;box-shadow:0 0 0 0 rgba(95,211,154,.7);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,211,154,.6)}70%{box-shadow:0 0 0 7px rgba(95,211,154,0)}100%{box-shadow:0 0 0 0 rgba(95,211,154,0)}}
+
+  #wait{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;color:var(--sub)}
+  #wait .big{font-size:56px;margin-bottom:16px;opacity:.5}
+  #wait h2{font-size:18px;color:var(--navy);font-weight:800;margin-bottom:8px}
+  #wait p{font-size:13.5px;line-height:1.8}
+  .dots span{display:inline-block;width:8px;height:8px;margin:0 3px;border-radius:50%;background:var(--steel);opacity:.4;animation:bounce 1.4s infinite}
+  .dots span:nth-child(2){animation-delay:.2s} .dots span:nth-child(3){animation-delay:.4s}
+  @keyframes bounce{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-6px)}}
+
+  /* 履歴 */
+  #history{max-width:640px;width:100%;margin:0 auto;padding:16px;display:none}
+  #history h3{font-size:12px;color:var(--sub);font-weight:800;letter-spacing:.05em;margin-bottom:10px}
+  .hitem{background:#fff;border:1px solid var(--line);border-left:4px solid var(--info);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  .hitem.warn{border-left-color:var(--warn)} .hitem.danger{border-left-color:var(--danger)}
+  .hitem .hh{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .hitem .htag{font-size:10px;font-weight:800;color:#fff;background:var(--info);border-radius:10px;padding:1px 9px}
+  .hitem.warn .htag{background:var(--warn)} .hitem.danger .htag{background:var(--danger)}
+  .hitem .htime{margin-left:auto;font-size:10.5px;color:var(--sub);font-weight:700}
+  .hitem .ht{font-size:14.5px;font-weight:800;color:var(--ink)}
+  .hitem .hd{font-size:12.5px;color:#33404c;line-height:1.6;margin-top:3px}
+
+  /* ポップアップ */
+  #overlay{position:fixed;inset:0;background:rgba(10,25,40,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+  #overlay.show{display:flex;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .popup{background:#fff;width:100%;max-width:480px;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4);animation:pop .35s cubic-bezier(.2,1.1,.4,1)}
+  @keyframes pop{0%{transform:scale(.82) translateY(20px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
+  .popup .band{padding:16px 22px;color:#fff;display:flex;align-items:center;gap:12px}
+  .popup .band .bic{font-size:30px;line-height:1}
+  .popup .band .btag{font-size:11px;font-weight:800;letter-spacing:.05em;opacity:.92}
+  .popup .band .bsev{font-size:15px;font-weight:900}
+  .popup.info  .band{background:linear-gradient(135deg,var(--info),#2f6fa8)}
+  .popup.warn  .band{background:linear-gradient(135deg,var(--warn),#a8720f)}
+  .popup.danger .band{background:linear-gradient(135deg,var(--danger),#a5352a)}
+  .popup.danger{animation:pop .35s cubic-bezier(.2,1.1,.4,1), shake .5s .35s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  .popup .pbody{padding:20px 22px 8px}
+  .popup .ptitle{font-size:20px;font-weight:900;color:var(--ink);line-height:1.35;margin-bottom:10px}
+  .popup .pdetail{font-size:14px;color:#33404c;line-height:1.7}
+  .popup .pask{font-size:12.5px;color:var(--sub);background:#f4f8fb;border-radius:10px;padding:11px 13px;line-height:1.6;margin-top:14px}
+  .popup .pfoot{padding:14px 22px 20px;display:flex;gap:10px;align-items:center}
+  .popup .ptime{font-size:11px;color:var(--sub);font-weight:700}
+  .popup .queue{font-size:11px;color:var(--sub);font-weight:700}
+  .popup .sp{flex:1}
+  .popup .ok{background:var(--navy);color:#fff;border:0;border-radius:10px;padding:12px 26px;font-weight:800;font-size:14.5px;cursor:pointer;font-family:inherit}
+  .popup .ok:hover{background:#0d2b47}
+
+  .toggle{position:fixed;right:14px;bottom:14px;background:#fff;border:1.5px solid var(--line);border-radius:24px;padding:9px 15px;font-size:12px;font-weight:800;color:var(--navy);cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.12);z-index:40}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="logo">🚨</span>
+    <h1>避難所オペレーション<small>PLAYER SCREEN</small></h1>
+    <span class="sp"></span>
+    <div class="conn" id="conn"><span class="led"></span><span id="conntxt">接続中…</span></div>
+  </header>
+
+  <div id="wait">
+    <div class="big">🏢</div>
+    <h2>イベント発生を待機中</h2>
+    <p>ファシリテーターがイベントを発生させると、<br>この画面にポップアップで通知が届きます。</p>
+    <div class="dots" style="margin-top:14px"><span></span><span></span><span></span></div>
+  </div>
+
+  <div id="history">
+    <h3>📜 これまでのイベント</h3>
+    <div id="hlist"></div>
+  </div>
+</div>
+
+<button class="toggle" id="toggle" onclick="toggleHistory()" style="display:none">📜 履歴</button>
+
+<!-- ポップアップ -->
+<div id="overlay">
+  <div class="popup" id="popup">
+    <div class="band">
+      <span class="bic" id="p-ic">⚠️</span>
+      <div>
+        <div class="btag" id="p-tag">状況</div>
+        <div class="bsev" id="p-sev">イベント発生</div>
+      </div>
+    </div>
+    <div class="pbody">
+      <div class="ptitle" id="p-title"></div>
+      <div class="pdetail" id="p-detail"></div>
+      <div class="pask">この状況にどう対応しますか？ 図面の配置を動かし、部屋のメモに方針を書きながらチームで話し合いましょう。正解は一つではありません。</div>
+    </div>
+    <div class="pfoot">
+      <span class="ptime" id="p-time"></span>
+      <span class="sp"></span>
+      <span class="queue" id="p-queue"></span>
+      <button class="ok" onclick="closePopup()">対応する ✓</button>
+    </div>
+  </div>
+</div>
+
+<audio id="ding" preload="auto"></audio>
+
+<script>
+// ===== 設定：GASのウェブアプリURL（facilitator.html と同じもの） =====
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbyR9g0TeWemG82FEgXGAiK-XB4CB3RtfRgLSDaDw-DcRMIFeptCKZEAx_f_8FmryoZB9A/exec';
+
+var POLL_MS = 4000;          // 取得間隔
+var lastId = 0;              // 受信済みの最大id
+var queue = [];              // 表示待ちイベント
+var showing = false;
+var history = [];
+var started = false;         // 初回同期フラグ（過去分を一気に出さない）
+
+var SEV = {
+  info:   {ic:'ℹ️', label:'お知らせ'},
+  warn:   {ic:'⚠️', label:'注意が必要'},
+  danger: {ic:'🚨', label:'緊急事態'}
+};
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function setConn(ok){
+  var c=document.getElementById('conn'); c.className='conn'+(ok?' ok':'');
+  document.getElementById('conntxt').textContent = ok ? '接続中' : '未接続';
+}
+
+function beep(){
+  try{
+    var ctx=new (window.AudioContext||window.webkitAudioContext)();
+    var o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type='sine'; o.frequency.value=880;
+    g.gain.setValueAtTime(.0001,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.25,ctx.currentTime+.02);
+    g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.5);
+    o.start(); o.stop(ctx.currentTime+.5);
+  }catch(e){}
+}
+
+function poll(){
+  if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){ setConn(false); return; }
+  fetch(GAS_URL+'?action=poll&since='+lastId).then(function(r){ return r.json(); }).then(function(res){
+    setConn(true);
+    if(res.lastId!=null && !started){
+      // 初回：既存イベントは履歴に入れて、ポップアップはしない
+      lastId = res.lastId;
+      started = true;
+      if(res.events && res.events.length){
+        res.events.forEach(function(ev){ history.push(ev); });
+        renderHistory();
+      }
+      // 初回同期用に全件取得して履歴を埋める
+      fetch(GAS_URL+'?action=list').then(function(r){return r.json();}).then(function(all){
+        if(all.events){ history=all.events.slice(); renderHistory(); }
+      }).catch(function(){});
+      return;
+    }
+    if(res.events && res.events.length){
+      res.events.forEach(function(ev){
+        if(ev.id>lastId) lastId=ev.id;
+        queue.push(ev);
+        history.push(ev);
+      });
+      renderHistory();
+      pump();
+    }
+  }).catch(function(){ setConn(false); });
+}
+
+function pump(){
+  if(showing || !queue.length) return;
+  showPopup(queue.shift());
+}
+
+function showPopup(ev){
+  showing=true;
+  var sev = SEV[ev.severity] || SEV.info;
+  var pop=document.getElementById('popup');
+  pop.className='popup '+(ev.severity||'info');
+  document.getElementById('p-ic').textContent=sev.ic;
+  document.getElementById('p-tag').textContent=ev.tag||'状況';
+  document.getElementById('p-sev').textContent=sev.label;
+  document.getElementById('p-title').textContent=ev.title||'';
+  document.getElementById('p-detail').textContent=ev.detail||'';
+  document.getElementById('p-time').textContent='発生 '+(ev.time||'');
+  document.getElementById('p-queue').textContent = queue.length ? ('待機 '+queue.length+'件') : '';
+  document.getElementById('overlay').classList.add('show');
+  beep();
+}
+
+function closePopup(){
+  document.getElementById('overlay').classList.remove('show');
+  showing=false;
+  setTimeout(pump, 350); // 次のイベントがあれば続けて表示
+}
+
+function renderHistory(){
+  var hl=document.getElementById('hlist');
+  if(!history.length){ return; }
+  document.getElementById('toggle').style.display='block';
+  hl.innerHTML = history.slice().reverse().map(function(ev){
+    var cls = ev.severity==='danger'?'danger':ev.severity==='warn'?'warn':'';
+    return '<div class="hitem '+cls+'"><div class="hh"><span class="htag">'+esc(ev.tag)+'</span>'+
+      '<span class="htime">'+esc(ev.time)+'</span></div>'+
+      '<div class="ht">'+esc(ev.title)+'</div>'+
+      (ev.detail?'<div class="hd">'+esc(ev.detail)+'</div>':'')+'</div>';
+  }).join('');
+}
+
+var histOpen=false;
+function toggleHistory(){
+  histOpen=!histOpen;
+  document.getElementById('history').style.display=histOpen?'block':'none';
+  document.getElementById('wait').style.display=histOpen?'none':'flex';
+  document.getElementById('toggle').textContent=histOpen?'✕ 閉じる':'📜 履歴';
+}
+
+poll();
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>
