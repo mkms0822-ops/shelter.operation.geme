@@ -127,7 +127,7 @@
 
 <script>
 // ===== 設定：GASのウェブアプリURL（facilitator.html と同じもの） =====
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbyR9g0TeWemG82FEgXGAiK-XB4CB3RtfRgLSDaDw-DcRMIFeptCKZEAx_f_8FmryoZB9A/exec';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbzBb0MgFp8Jn1WRb1mjI1oLGmp1RHjGpXiomdGJTu3f35iMxldhtaeaQVoVDWH2JzWj8w/exec';
 
 var POLL_MS = 4000;          // 取得間隔
 var queue = [];              // 表示待ちイベント
@@ -184,66 +184,36 @@ function beep(){
   }catch(e){}
 }
 
-var jsonpSeq = 0;            // JSONPコールバック名の連番
-var jsonpBusy = false;       // 多重リクエスト防止
-
-function handlePollResult(res){
-  setConn(true);
-  var n = (res.events && res.events.length) ? res.events.length : 0;
-  dbg('接続OK / 既読ID:'+lastId+' / 未表示:'+queue.length+'件 / サーバー最新ID:'+(res.lastId!=null?res.lastId:'?'));
-
-  if(n){
-    res.events.forEach(function(ev){
-      if(ev.id<=lastId) return;
-      if(queued[ev.id]) return;
-      queued[ev.id]=true;
-      queue.push(ev);
-      history.push(ev);
-    });
-    renderHistory();
-    pump();
-  }
-}
-
 function poll(){
   if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){ setConn(false); dbg('GAS_URL未設定'); return; }
-  if(jsonpBusy){ return; }   // 前回のリクエストがまだ完了していない場合はスキップ
-  jsonpBusy = true;
+  fetch(GAS_URL+'?action=poll&since='+lastId)
+    .then(function(r){ return r.text(); })   // まずテキストで受ける（リダイレクト後の本文も確実に取得）
+    .then(function(txt){
+      var res;
+      try { res = JSON.parse(txt); }
+      catch(e){
+        // JSONとして読めない＝ログインHTML等が返っている
+        setConn(false);
+        dbg('応答をJSONで読めません（アクセス権が「全員」か確認）');
+        return;
+      }
+      setConn(true);
+      var n = (res.events && res.events.length) ? res.events.length : 0;
+      dbg('接続OK / 既読ID:'+lastId+' / 未表示:'+queue.length+'件 / サーバー最新ID:'+(res.lastId!=null?res.lastId:'?'));
 
-  var cbName = 'gasCb_' + (++jsonpSeq) + '_' + Date.now();
-  var script = document.createElement('script');
-  var done = false;
-
-  function cleanup(){
-    if(done) return;
-    done = true;
-    jsonpBusy = false;
-    try { delete window[cbName]; } catch(e){ window[cbName] = undefined; }
-    if(script.parentNode){ script.parentNode.removeChild(script); }
-    clearTimeout(timer);
-  }
-
-  // GAS側は callback パラメータを受け取り、cbName(...) の形で返す必要があります
-  window[cbName] = function(res){
-    handlePollResult(res);
-    cleanup();
-  };
-
-  var timer = setTimeout(function(){
-    // 応答なし＝タイムアウト（次回再取得）
-    setConn(false);
-    dbg('通信エラー（次回再取得します）');
-    cleanup();
-  }, POLL_MS + 6000);
-
-  script.onerror = function(){
-    setConn(false);
-    dbg('通信エラー（次回再取得します）');
-    cleanup();
-  };
-
-  script.src = GAS_URL + '?action=poll&since=' + lastId + '&callback=' + cbName;
-  document.head.appendChild(script);
+      if(n){
+        res.events.forEach(function(ev){
+          if(ev.id<=lastId) return;
+          if(queued[ev.id]) return;
+          queued[ev.id]=true;
+          queue.push(ev);
+          history.push(ev);
+        });
+        renderHistory();
+        pump();
+      }
+    })
+    .catch(function(err){ setConn(false); dbg('通信エラー（次回再取得します）'); });
 }
 
 function pump(){
