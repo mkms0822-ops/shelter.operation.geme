@@ -163,20 +163,20 @@ function poll(){
   if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){ setConn(false); return; }
   fetch(GAS_URL+'?action=poll&since='+lastId).then(function(r){ return r.json(); }).then(function(res){
     setConn(true);
-    if(res.lastId!=null && !started){
-      // 初回：既存イベントは履歴に入れて、ポップアップはしない
-      lastId = res.lastId;
+
+    // 初回：この時点で既に存在するイベントは履歴に入れるだけ（ポップアップしない）
+    if(!started){
       started = true;
       if(res.events && res.events.length){
         res.events.forEach(function(ev){ history.push(ev); });
         renderHistory();
       }
-      // 初回同期用に全件取得して履歴を埋める
-      fetch(GAS_URL+'?action=list').then(function(r){return r.json();}).then(function(all){
-        if(all.events){ history=all.events.slice(); renderHistory(); }
-      }).catch(function(){});
+      // 既存の最大idまでを「見た」ことにし、以降の新規だけポップアップ
+      lastId = (res.lastId!=null) ? res.lastId : lastId;
       return;
     }
+
+    // 2回目以降：新規イベントはポップアップ
     if(res.events && res.events.length){
       res.events.forEach(function(ev){
         if(ev.id>lastId) lastId=ev.id;
