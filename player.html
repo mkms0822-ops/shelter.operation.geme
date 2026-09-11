@@ -87,6 +87,8 @@
     <h2>イベント発生を待機中</h2>
     <p>ファシリテーターがイベントを発生させると、<br>この画面にポップアップで通知が届きます。</p>
     <div class="dots" style="margin-top:14px"><span></span><span></span><span></span></div>
+    <div id="dbg" style="margin-top:20px;font-size:11px;color:#8b98a5;font-family:monospace"></div>
+    <button onclick="resetSeen()" style="margin-top:10px;font-size:11px;color:#63727f;background:#fff;border:1px solid #d3dde5;border-radius:20px;padding:6px 14px;cursor:pointer;font-family:inherit">既読をリセット（最初から受信し直す）</button>
   </div>
 
   <div id="history">
@@ -128,11 +130,17 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbyR9g0TeWemG82FEgXGAiK-XB4CB3RtfRgLSDaDw-DcRMIFeptCKZEAx_f_8FmryoZB9A/exec';
 
 var POLL_MS = 4000;          // 取得間隔
-var lastId = 0;              // 受信済みの最大id
 var queue = [];              // 表示待ちイベント
 var showing = false;
 var history = [];
-var started = false;         // 初回同期フラグ（過去分を一気に出さない）
+
+// 「どのidまで表示したか」をブラウザに記憶（再読み込みしても取りこぼさない）
+// テスト中も安定して動くよう、既読IDを保存する方式にする。
+var SEEN_KEY = 'shelter_seen_id';
+var lastId = 0;
+try { lastId = parseInt(localStorage.getItem(SEEN_KEY) || '0', 10) || 0; } catch(e){ lastId = 0; }
+
+function saveSeen(id){ try{ localStorage.setItem(SEEN_KEY, String(id)); }catch(e){} }
 
 var SEV = {
   info:   {ic:'ℹ️', label:'お知らせ'},
@@ -144,6 +152,19 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function setConn(ok){
   var c=document.getElementById('conn'); c.className='conn'+(ok?' ok':'');
   document.getElementById('conntxt').textContent = ok ? '接続中' : '未接続';
+}
+
+function dbg(msg){
+  var d=document.getElementById('dbg'); if(d) d.textContent=msg;
+}
+
+// 既読をリセット（テスト用：もう一度すべてのイベントを受信し直す）
+function resetSeen(){
+  lastId = 0;
+  saveSeen(0);
+  queue = [];
+  history = [];
+  dbg('既読をリセットしました。次回取得から全イベントを受信します。');
 }
 
 function beep(){
@@ -160,33 +181,23 @@ function beep(){
 }
 
 function poll(){
-  if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){ setConn(false); return; }
+  if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){ setConn(false); dbg('GAS_URL未設定'); return; }
   fetch(GAS_URL+'?action=poll&since='+lastId).then(function(r){ return r.json(); }).then(function(res){
     setConn(true);
+    var n = (res.events && res.events.length) ? res.events.length : 0;
+    dbg('接続OK / 既読ID:'+lastId+' / 今回取得:'+n+'件 / サーバー最新ID:'+(res.lastId!=null?res.lastId:'?'));
 
-    // 初回：この時点で既に存在するイベントは履歴に入れるだけ（ポップアップしない）
-    if(!started){
-      started = true;
-      if(res.events && res.events.length){
-        res.events.forEach(function(ev){ history.push(ev); });
-        renderHistory();
-      }
-      // 既存の最大idまでを「見た」ことにし、以降の新規だけポップアップ
-      lastId = (res.lastId!=null) ? res.lastId : lastId;
-      return;
-    }
-
-    // 2回目以降：新規イベントはポップアップ
-    if(res.events && res.events.length){
+    // since=lastId より新しいものが返ってくる。未読はすべてポップアップ対象。
+    if(n){
       res.events.forEach(function(ev){
-        if(ev.id>lastId) lastId=ev.id;
+        if(ev.id>lastId){ lastId=ev.id; saveSeen(lastId); }
         queue.push(ev);
         history.push(ev);
       });
       renderHistory();
       pump();
     }
-  }).catch(function(){ setConn(false); });
+  }).catch(function(err){ setConn(false); dbg('通信エラー: '+err); });
 }
 
 function pump(){
