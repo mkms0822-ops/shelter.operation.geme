@@ -132,7 +132,7 @@ var GAS_URL = 'https://script.google.com/macros/s/AKfycbyz6f5re-l13zlIpq_TNMKpJy
 var POLL_MS = 4000;          // 取得間隔
 var queue = [];              // 表示待ちイベント
 var showing = false;
-var history = [];
+var evHistory = [];
 var queued = {};             // 取得済みidの記録（二重登録防止）
 var currentEvId = null;      // 現在ポップアップ表示中のイベントid
 
@@ -165,7 +165,7 @@ function resetSeen(){
   lastId = 0;
   saveSeen(0);
   queue = [];
-  history = [];
+  evHistory = [];
   queued = {};
   currentEvId = null;
   dbg('既読をリセットしました。次回取得から全イベントを受信します。');
@@ -198,7 +198,7 @@ function handlePollResult(res){
       if(queued[ev.id]) return;
       queued[ev.id]=true;
       queue.push(ev);
-      history.push(ev);
+      evHistory.push(ev);
     });
     try { renderHistory(); } catch(e){ /* 履歴描画で失敗してもポップアップは出す */ }
     pump();
@@ -276,10 +276,10 @@ function closePopup(){
 function renderHistory(){
   var hl=document.getElementById('hlist');
   if(!hl) return;
-  if(!history.length){ return; }
+  if(!evHistory.length){ return; }
   var tg=document.getElementById('toggle');
   if(tg) tg.style.display='block';
-  hl.innerHTML = history.slice().reverse().map(function(ev){
+  hl.innerHTML = evHistory.slice().reverse().map(function(ev){
     if(!ev) return '';
     var sev = ev.severity;
     var cls = sev==='danger'?'danger':sev==='warn'?'warn':'';
