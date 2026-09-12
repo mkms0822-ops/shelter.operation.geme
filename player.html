@@ -3,35 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>プレイヤー画面｜避難所ゲーム</title>
+<title>掲示板｜避難所オペレーション</title>
 <style>
   :root{
     --ink:#1b2733; --sub:#63727f; --line:#d3dde5; --bg:#eaeef1; --panel:#ffffff;
     --navy:#123a5e; --steel:#3f6f8f;
     --info:#3f8ad1; --warn:#c98a1e; --danger:#d24b3e; --ok:#2e7d5b;
-    --fs:1;              /* 文字サイズ倍率（小0.9/中1/大1.2） */
   }
-  /* パステル背景テーマ（bodyのクラスで切替） */
   body.theme-green  { --bg:#e6f4ea; }
   body.theme-pink   { --bg:#fbe9f0; }
   body.theme-orange { --bg:#fdeede; }
   body.theme-blue   { --bg:#e5eef8; }
-  /* 文字サイズ（全体をemベースで拡縮） */
-  body.fs-sm { font-size:15px; }
-  body.fs-md { font-size:16.5px; }
-  body.fs-lg { font-size:20px; }
-  /* 主要テキストを文字サイズ設定に連動させる（大/小で読みやすく） */
-  body.fs-sm #wait h2{font-size:16px}   body.fs-lg #wait h2{font-size:24px}
-  body.fs-sm #wait p{font-size:12px}    body.fs-lg #wait p{font-size:17px}
-  body.fs-sm .ptitle{font-size:17px}    body.fs-lg .ptitle{font-size:26px}
-  body.fs-sm .pdetail{font-size:12.5px} body.fs-lg .pdetail{font-size:18px}
-  body.fs-sm .pask{font-size:11px}      body.fs-lg .pask{font-size:15px}
-  body.fs-sm .band .bsev{font-size:13px} body.fs-lg .band .bsev{font-size:19px}
-  body.fs-sm .band .btag{font-size:10px} body.fs-lg .band .btag{font-size:13px}
-  body.fs-sm .popup .ok{font-size:13px}  body.fs-lg .popup .ok{font-size:18px}
-  body.fs-sm .hitem .ht{font-size:13px} body.fs-lg .hitem .ht{font-size:18px}
-  body.fs-sm .hitem .hd{font-size:11px} body.fs-lg .hitem .hd{font-size:15px}
-  body.fs-lg header h1{font-size:19px}  body.fs-sm header h1{font-size:14px}
+  body.fs-sm { font-size:14px; } body.fs-md { font-size:16px; } body.fs-lg { font-size:19px; }
+
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg)}
   #app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
@@ -41,91 +25,58 @@
   header h1{font-size:16px;font-weight:800}
   header h1 small{display:block;font-size:10px;color:#a9c7db;font-weight:600;letter-spacing:.1em}
   header .sp{flex:1}
+  .hbtn{background:rgba(255,255,255,.14);border:0;color:#fff;font-size:16px;border-radius:20px;width:34px;height:34px;cursor:pointer;flex:none}
+  .hbtn:hover{background:rgba(255,255,255,.26)}
   .conn{font-size:11.5px;font-weight:700;background:rgba(255,255,255,.14);border-radius:20px;padding:5px 12px;display:flex;align-items:center;gap:7px}
   .conn .led{width:9px;height:9px;border-radius:50%;background:#c05a2a}
   .conn.ok .led{background:#5fd39a;box-shadow:0 0 0 0 rgba(95,211,154,.7);animation:pulse 2s infinite}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(95,211,154,.6)}70%{box-shadow:0 0 0 7px rgba(95,211,154,0)}100%{box-shadow:0 0 0 0 rgba(95,211,154,0)}}
 
-  #wait{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;color:var(--sub)}
-  #wait .big{font-size:56px;margin-bottom:16px;opacity:.5}
-  #wait h2{font-size:18px;color:var(--navy);font-weight:800;margin-bottom:8px}
-  #wait p{font-size:13.5px;line-height:1.8}
-  .dots span{display:inline-block;width:8px;height:8px;margin:0 3px;border-radius:50%;background:var(--steel);opacity:.4;animation:bounce 1.4s infinite}
-  .dots span:nth-child(2){animation-delay:.2s} .dots span:nth-child(3){animation-delay:.4s}
-  @keyframes bounce{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-6px)}}
+  /* タブ */
+  .tabs{display:flex;gap:6px;overflow-x:auto;padding:12px 14px 0;flex:none;-webkit-overflow-scrolling:touch}
+  .tab{white-space:nowrap;border:1.5px solid var(--line);background:#fff;border-radius:11px 11px 0 0;padding:9px 15px;font-size:13.5px;font-weight:800;color:var(--sub);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;position:relative}
+  .tab .dot{width:11px;height:11px;border-radius:50%;flex:none}
+  .dot-green{background:#3f9e63} .dot-pink{background:#c25a86} .dot-orange{background:#c9832f} .dot-blue{background:#3f77b3} .dot-all{background:#7a8a97}
+  .tab.on{color:var(--navy);border-color:var(--steel);border-bottom-color:#fff;background:#fff;box-shadow:0 -2px 8px rgba(18,58,94,.06)}
+  .tab .cnt{font-size:10.5px;font-weight:800;color:#fff;background:var(--steel);border-radius:9px;padding:1px 7px}
+  .tab .newbadge{width:8px;height:8px;border-radius:50%;background:var(--danger);position:absolute;top:6px;right:6px;display:none}
+  .tab.hasnew .newbadge{display:block}
 
-  /* 履歴 */
-  #history{max-width:640px;width:100%;margin:0 auto;padding:16px;display:none}
-  #history h3{font-size:12px;color:var(--sub);font-weight:800;letter-spacing:.05em;margin-bottom:10px}
-  .hitem{background:#fff;border:1px solid var(--line);border-left:4px solid var(--info);border-radius:10px;padding:12px 14px;margin-bottom:10px}
-  .hitem.warn{border-left-color:var(--warn)} .hitem.danger{border-left-color:var(--danger)}
-  .hitem .hh{display:flex;align-items:center;gap:8px;margin-bottom:4px}
-  .hitem .htag{font-size:10px;font-weight:800;color:#fff;background:var(--info);border-radius:10px;padding:1px 9px}
-  .hitem.warn .htag{background:var(--warn)} .hitem.danger .htag{background:var(--danger)}
-  .hitem .htime{margin-left:auto;font-size:10.5px;color:var(--sub);font-weight:700}
-  .hitem .ht{font-size:14.5px;font-weight:800;color:var(--ink)}
-  .hitem .hd{font-size:12.5px;color:#33404c;line-height:1.6;margin-top:3px}
+  main{flex:1;max-width:760px;width:100%;margin:0 auto;padding:14px 14px 30px}
 
-  /* ポップアップ */
-  #overlay{position:fixed;inset:0;background:rgba(10,25,40,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
-  #overlay.show{display:flex;animation:fade .2s ease}
-  @keyframes fade{from{opacity:0}to{opacity:1}}
-  .popup{background:#fff;width:100%;max-width:480px;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4);animation:pop .35s cubic-bezier(.2,1.1,.4,1)}
-  @keyframes pop{0%{transform:scale(.82) translateY(20px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
-  .popup .band{padding:16px 22px;color:#fff;display:flex;align-items:center;gap:12px}
-  .popup .band .bic{font-size:30px;line-height:1}
-  .popup .band .btag{font-size:11px;font-weight:800;letter-spacing:.05em;opacity:.92}
-  .popup .band .bsev{font-size:15px;font-weight:900}
-  .popup.info  .band{background:linear-gradient(135deg,var(--info),#2f6fa8)}
-  .popup.warn  .band{background:linear-gradient(135deg,var(--warn),#a8720f)}
-  .popup.danger .band{background:linear-gradient(135deg,var(--danger),#a5352a)}
-  .popup.danger{animation:pop .35s cubic-bezier(.2,1.1,.4,1), shake .5s .35s}
-  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
-  .popup .pbody{padding:20px 22px 8px}
-  .popup .ptitle{font-size:20px;font-weight:900;color:var(--ink);line-height:1.35;margin-bottom:10px}
-  .popup .pdetail{font-size:14px;color:#33404c;line-height:1.7}
-  .popup .pask{font-size:12.5px;color:var(--sub);background:#f4f8fb;border-radius:10px;padding:11px 13px;line-height:1.6;margin-top:14px}
-  .popup .pfoot{padding:14px 22px 20px;display:flex;gap:10px;align-items:center}
-  .popup .ptime{font-size:11px;color:var(--sub);font-weight:700}
-  .popup .queue{font-size:11px;color:var(--sub);font-weight:700}
-  .popup .sp{flex:1}
-  .popup .ok{background:var(--navy);color:#fff;border:0;border-radius:10px;padding:12px 26px;font-weight:800;font-size:14.5px;cursor:pointer;font-family:inherit}
-  .popup .ok:hover{background:#0d2b47}
+  /* メモ欄 */
+  .memo{background:#fffef4;border:1px solid #e6dfa8;border-radius:12px;padding:12px 13px;margin-bottom:16px}
+  .memo h3{font-size:12px;color:#8a7a1e;font-weight:800;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .memo textarea{width:100%;min-height:88px;border:1px solid #e0d9a0;border-radius:9px;padding:10px 11px;font-size:14px;font-family:inherit;color:var(--ink);background:#fffdf0;resize:vertical;line-height:1.6}
+  .memo textarea:focus{outline:none;border-color:#c9a94a}
+  .memo .mfoot{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .memo .msave{background:var(--navy);color:#fff;border:0;border-radius:9px;padding:9px 20px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+  .memo .msave:hover{background:#0d2b47}
+  .memo .mstat{font-size:11px;color:var(--sub);font-weight:700}
 
-  .toggle{position:fixed;right:14px;bottom:14px;background:#fff;border:1.5px solid var(--line);border-radius:24px;padding:9px 15px;font-size:12px;font-weight:800;color:var(--navy);cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.12);z-index:40}
-  /* ===== ヘッダー追加要素 ===== */
-  .hbtn{background:rgba(255,255,255,.14);border:0;color:#fff;font-size:16px;border-radius:20px;width:34px;height:34px;cursor:pointer;flex:none}
-  .hbtn:hover{background:rgba(255,255,255,.26)}
-  .gbadge{font-size:12px;font-weight:800;color:#fff;border-radius:20px;padding:5px 13px;background:var(--steel)}
-  .gbadge.g-green{background:#3f9e63} .gbadge.g-pink{background:#c25a86}
-  .gbadge.g-orange{background:#c9832f} .gbadge.g-blue{background:#3f77b3}
+  /* イベント一覧 */
+  .sec-h{font-size:12px;color:var(--sub);font-weight:800;letter-spacing:.04em;margin:4px 2px 10px}
+  .evitem{background:#fff;border:1px solid var(--line);border-left:4px solid var(--info);border-radius:11px;padding:13px 15px;margin-bottom:11px}
+  .evitem.warn{border-left-color:var(--warn)} .evitem.danger{border-left-color:var(--danger)}
+  .evitem .eh{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+  .evitem .etag{font-size:10.5px;font-weight:800;color:#fff;background:var(--info);border-radius:10px;padding:2px 10px}
+  .evitem.warn .etag{background:var(--warn)} .evitem.danger .etag{background:var(--danger)}
+  .evitem .egrp{font-size:10.5px;font-weight:800;color:#33404c;background:#eef2f5;border-radius:10px;padding:2px 10px}
+  .evitem .etime{margin-left:auto;font-size:10.5px;color:var(--sub);font-weight:700}
+  .evitem .et{font-size:15.5px;font-weight:800;color:var(--ink);line-height:1.4}
+  .evitem .ed{font-size:13px;color:#33404c;line-height:1.65;margin-top:4px}
+  .empty{color:var(--sub);font-size:12.5px;text-align:center;padding:26px 10px;line-height:1.8}
+  body.fs-lg .et{font-size:19px} body.fs-lg .ed{font-size:16px} body.fs-lg .memo textarea{font-size:17px}
+  body.fs-sm .et{font-size:14px} body.fs-sm .ed{font-size:11.5px} body.fs-sm .memo textarea{font-size:12.5px}
 
-  /* ===== 参加登録ゲート ===== */
-  #joingate{position:fixed;inset:0;background:linear-gradient(160deg,#123a5e,#0d2b47);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
-  #joingate.hide{display:none}
-  .jg-box{background:#fff;width:100%;max-width:400px;border-radius:20px;padding:26px 24px;box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center}
-  .jg-logo{font-size:44px}
-  .jg-box h2{font-size:20px;color:var(--navy);font-weight:900;margin:6px 0}
-  .jg-lead{font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:18px}
-  .jg-label{display:block;text-align:left;font-size:12px;font-weight:800;color:var(--sub);margin:12px 0 6px}
-  .jg-input{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:13px 14px;font-size:16px;font-family:inherit;color:var(--ink)}
-  .jg-input:focus{outline:none;border-color:var(--steel)}
-  .jg-groups{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
-  .jg-loading{grid-column:1/-1;color:var(--sub);font-size:12px;padding:12px}
-  .jg-g{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 10px;font-size:14px;font-weight:800;color:var(--ink);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;justify-content:center}
-  .jg-g .dot{width:14px;height:14px;border-radius:50%;flex:none}
-  .jg-g.sel{border-color:var(--navy);background:#f2f7fb;box-shadow:0 0 0 2px rgba(18,58,94,.12)}
-  .dot-green{background:#3f9e63} .dot-pink{background:#c25a86} .dot-orange{background:#c9832f} .dot-blue{background:#3f77b3}
-  .jg-err{color:var(--danger);font-size:12.5px;font-weight:700;min-height:18px;margin:10px 0 2px}
-  .jg-go{width:100%;background:var(--navy);color:#fff;border:0;border-radius:12px;padding:14px;font-size:15.5px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px}
-  .jg-go:hover{background:#0d2b47}
+  #dbg{max-width:760px;margin:0 auto;padding:0 14px 16px;font-size:11px;color:#8b98a5;font-family:monospace}
 
-  /* ===== 表示設定パネル ===== */
-  #setpanel{position:fixed;top:56px;right:12px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.22);padding:14px 16px;z-index:150;display:none;min-width:250px}
+  /* 設定パネル */
+  #setpanel{position:fixed;top:56px;right:12px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.22);padding:14px 16px;z-index:150;display:none;min-width:240px}
   #setpanel.show{display:block}
   .set-row{display:flex;align-items:center;gap:10px;margin:10px 0}
   .set-row:first-child{margin-top:2px}
-  .set-t{font-size:12px;font-weight:800;color:var(--sub);width:66px;flex:none}
+  .set-t{font-size:12px;font-weight:800;color:var(--sub);width:60px;flex:none}
   .seg{display:flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
   .seg button{background:#fff;border:0;padding:8px 15px;font-size:13.5px;font-weight:800;color:var(--sub);cursor:pointer;font-family:inherit}
   .seg button.on{background:var(--navy);color:#fff}
@@ -133,116 +84,71 @@
   .sw{width:28px;height:28px;border-radius:50%;border:2px solid rgba(0,0,0,.12);cursor:pointer;font-size:13px;color:var(--sub);display:flex;align-items:center;justify-content:center}
   .sw.on{border-color:var(--navy);box-shadow:0 0 0 2px rgba(18,58,94,.2)}
   .sw-green{background:#e6f4ea} .sw-pink{background:#fbe9f0} .sw-orange{background:#fdeede} .sw-blue{background:#e5eef8} .sw-none{background:#fff}
-  .set-leave{background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit}
-  .set-leave:hover{background:#f4f8fb}
-
 </style>
 </head>
 <body>
 
-<!-- ===== 参加登録ゲート（名前＋グループ） ===== -->
-<div id="joingate">
-  <div class="jg-box">
-    <div class="jg-logo">🚨</div>
-    <h2>避難所オペレーション</h2>
-    <p class="jg-lead">お名前を入力し、参加するグループを選んでください。</p>
-    <label class="jg-label">お名前（ニックネーム可）</label>
-    <input type="text" id="jg-name" class="jg-input" placeholder="例：山田" maxlength="20" autocomplete="off">
-    <label class="jg-label">グループ</label>
-    <div id="jg-groups" class="jg-groups"><div class="jg-loading">グループを読み込み中…</div></div>
-    <div class="jg-err" id="jg-err"></div>
-    <button class="jg-go" id="jg-go" onclick="doJoin()">この内容で参加する ✓</button>
-  </div>
-</div>
-
-<!-- ===== 表示設定パネル ===== -->
+<!-- 設定パネル -->
 <div id="setpanel">
-  <div class="set-inner">
-    <div class="set-row">
-      <span class="set-t">文字サイズ</span>
-      <div class="seg">
-        <button data-fs="sm" onclick="setFont('sm')">小</button>
-        <button data-fs="md" class="on" onclick="setFont('md')">中</button>
-        <button data-fs="lg" onclick="setFont('lg')">大</button>
-      </div>
+  <div class="set-row">
+    <span class="set-t">文字サイズ</span>
+    <div class="seg">
+      <button data-fs="sm" onclick="setFont('sm')">小</button>
+      <button data-fs="md" class="on" onclick="setFont('md')">中</button>
+      <button data-fs="lg" onclick="setFont('lg')">大</button>
     </div>
-    <div class="set-row">
-      <span class="set-t">背景色</span>
-      <div class="swatches">
-        <button class="sw sw-green"  data-th="green"  onclick="setTheme('green')"  title="グリーン"></button>
-        <button class="sw sw-pink"   data-th="pink"   onclick="setTheme('pink')"   title="ピンク"></button>
-        <button class="sw sw-orange" data-th="orange" onclick="setTheme('orange')" title="オレンジ"></button>
-        <button class="sw sw-blue"   data-th="blue"   onclick="setTheme('blue')"   title="ブルー"></button>
-        <button class="sw sw-none"   data-th=""       onclick="setTheme('')"       title="なし">×</button>
-      </div>
-    </div>
-    <div class="set-row">
-      <span class="set-t">参加情報</span>
-      <button class="set-leave" onclick="leaveGroup()">名前・グループを変更</button>
+  </div>
+  <div class="set-row">
+    <span class="set-t">背景色</span>
+    <div class="swatches">
+      <button class="sw sw-green"  data-th="green"  onclick="setTheme('green')"></button>
+      <button class="sw sw-pink"   data-th="pink"   onclick="setTheme('pink')"></button>
+      <button class="sw sw-orange" data-th="orange" onclick="setTheme('orange')"></button>
+      <button class="sw sw-blue"   data-th="blue"   onclick="setTheme('blue')"></button>
+      <button class="sw sw-none"   data-th=""       onclick="setTheme('')">×</button>
     </div>
   </div>
 </div>
 
 <div id="app">
   <header>
-    <span class="logo">🚨</span>
-    <h1>避難所オペレーション<small>PLAYER SCREEN</small></h1>
+    <span class="logo">📋</span>
+    <h1>イベント掲示板<small>SHELTER BULLETIN BOARD</small></h1>
     <span class="sp"></span>
-    <span class="gbadge" id="gbadge" style="display:none"></span>
-    <button class="hbtn" id="setbtn" onclick="toggleSettings()" title="表示設定">⚙️</button>
+    <button class="hbtn" onclick="toggleSettings()" title="表示設定">⚙️</button>
     <div class="conn" id="conn"><span class="led"></span><span id="conntxt">接続中…</span></div>
   </header>
 
-  <div id="wait">
-    <div class="big">🏢</div>
-    <h2>イベント発生を待機中</h2>
-    <p>ファシリテーターがイベントを発生させると、<br>この画面にポップアップで通知が届きます。</p>
-    <div class="dots" style="margin-top:14px"><span></span><span></span><span></span></div>
-    <div id="dbg" style="margin-top:20px;font-size:11px;color:#8b98a5;font-family:monospace"></div>
-    <button onclick="resetSeen()" style="margin-top:10px;font-size:11px;color:#63727f;background:#fff;border:1px solid #d3dde5;border-radius:20px;padding:6px 14px;cursor:pointer;font-family:inherit">既読をリセット（最初から受信し直す）</button>
-  </div>
+  <div class="tabs" id="tabs"></div>
 
-  <div id="history">
-    <h3>📜 これまでのイベント</h3>
-    <div id="hlist"></div>
-  </div>
+  <main id="main">
+    <div class="empty">読み込み中…</div>
+  </main>
+
+  <div id="dbg"></div>
 </div>
-
-<button class="toggle" id="toggle" onclick="toggleHistory()" style="display:none">📜 履歴</button>
-
-<!-- ポップアップ -->
-<div id="overlay">
-  <div class="popup" id="popup">
-    <div class="band">
-      <span class="bic" id="p-ic">⚠️</span>
-      <div>
-        <div class="btag" id="p-tag">状況</div>
-        <div class="bsev" id="p-sev">イベント発生</div>
-      </div>
-    </div>
-    <div class="pbody">
-      <div class="ptitle" id="p-title"></div>
-      <div class="pdetail" id="p-detail"></div>
-      <div class="pask">この状況にどう対応しますか？ 図面の配置を動かし、部屋のメモに方針を書きながらチームで話し合いましょう。正解は一つではありません。</div>
-    </div>
-    <div class="pfoot">
-      <span class="ptime" id="p-time"></span>
-      <span class="sp"></span>
-      <span class="queue" id="p-queue"></span>
-      <button class="ok" onclick="closePopup()">対応する ✓</button>
-    </div>
-  </div>
-</div>
-
-<audio id="ding" preload="auto"></audio>
 
 <script>
-// ===== 設定：GASのウェブアプリURL（facilitator.html と同じもの） =====
+// ===== 設定：GASのウェブアプリURL（他ファイルと同じもの） =====
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbyz6f5re-l13zlIpq_TNMKpJyURr1-rmIAKoD6ss_smgVGreFY-_7-pgxZzua5vcafilA/exec';
 
-// ===================================================================
-// 表示設定（文字サイズ・背景色）— 各端末に保存
-// ===================================================================
+var POLL_MS = 5000;
+var ALL = 'all';
+
+var groups = [];          // [{name,color}]
+var eventsAll = [];       // 全イベント
+var memos = {};           // {group: {text, updated}}
+var curTab = ALL;         // 選択中タブ（'all' or グループ名）
+var seenCount = {};       // タブごとに既読件数（新着バッジ用）
+var editing = false;      // メモ編集中はメモ欄を上書きしない
+var jsonpBusy = false, jsonpSeq = 0;
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function colorClass(c){ return ['green','pink','orange','blue'].indexOf(c)>=0 ? c : 'all'; }
+function setConn(ok){ var c=document.getElementById('conn'); c.className='conn'+(ok?' ok':''); document.getElementById('conntxt').textContent=ok?'接続中':'未接続'; }
+function dbg(m){ var d=document.getElementById('dbg'); if(d) d.textContent=m; }
+
+// ===== 表示設定 =====
 function setFont(sz){
   document.body.classList.remove('fs-sm','fs-md','fs-lg');
   document.body.classList.add('fs-'+sz);
@@ -257,303 +163,145 @@ function setTheme(th){
   for(var i=0;i<sw.length;i++) sw[i].classList.toggle('on', sw[i].getAttribute('data-th')===th);
   try{ localStorage.setItem('ui_theme', th); }catch(e){}
 }
-function toggleSettings(){
-  document.getElementById('setpanel').classList.toggle('show');
-}
-// 起動時に保存済み設定を適用
+function toggleSettings(){ document.getElementById('setpanel').classList.toggle('show'); }
 (function initUI(){
   var f='md', t='';
   try{ f=localStorage.getItem('ui_font')||'md'; }catch(e){}
   try{ t=localStorage.getItem('ui_theme')||''; }catch(e){}
   setFont(f); setTheme(t);
+  // 既読件数を復元
+  try{ seenCount = JSON.parse(localStorage.getItem('board_seen')||'{}')||{}; }catch(e){ seenCount={}; }
 })();
+function saveSeen(){ try{ localStorage.setItem('board_seen', JSON.stringify(seenCount)); }catch(e){} }
 
-// ===================================================================
-// 参加登録（名前＋グループ）
-// ===================================================================
-var MY = { id:null, name:null, group:null, color:null };
-try {
-  var saved = JSON.parse(localStorage.getItem('sos_member')||'null');
-  if(saved && saved.name){ MY = saved; }
-} catch(e){}
-var selectedGroup = null;   // ゲートで選択中のグループ
-var GROUPS = [];
-
-function colorClass(c){ return ['green','pink','orange','blue'].indexOf(c)>=0 ? c : 'blue'; }
-
-// グループ一覧をJSONPで取得してゲートに描画
-function loadGroups(){
-  var cb='grpCb_'+Date.now();
-  var s=document.createElement('script');
-  var to=setTimeout(function(){ cleanup(); showGroupError(); }, 8000);
-  function cleanup(){ try{delete window[cb];}catch(e){} if(s.parentNode)s.parentNode.removeChild(s); clearTimeout(to); }
-  window[cb]=function(res){
-    cleanup();
-    GROUPS = (res && res.groups) ? res.groups : [];
-    renderGroupChoices();
-  };
-  s.onerror=function(){ cleanup(); showGroupError(); };
-  s.src=GAS_URL+'?action=groups&callback='+cb;
+// ===== データ取得（JSONP：board = 全イベント＋メモ＋グループ） =====
+function poll(){
+  if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){ setConn(false); dbg('GAS_URL未設定'); return; }
+  if(jsonpBusy) return;
+  jsonpBusy = true;
+  var cb='boardCb_'+(++jsonpSeq)+'_'+Date.now();
+  var s=document.createElement('script'); var done=false;
+  var timer=setTimeout(function(){ setConn(false); dbg('通信エラー（次回再取得）'); cleanup(); }, POLL_MS+6000);
+  function cleanup(){ if(done)return; done=true; jsonpBusy=false; try{delete window[cb];}catch(e){} if(s.parentNode)s.parentNode.removeChild(s); clearTimeout(timer); }
+  window[cb]=function(res){ try{ handle(res); }catch(e){} cleanup(); };
+  s.onerror=function(){ setConn(false); dbg('通信エラー（次回再取得）'); cleanup(); };
+  s.src=GAS_URL+'?action=board&callback='+cb;
   document.head.appendChild(s);
 }
-function showGroupError(){
-  var box=document.getElementById('jg-groups');
-  if(box) box.innerHTML='<div class="jg-loading">グループを取得できませんでした。ネットワークを確認してください。</div>';
+
+function handle(res){
+  setConn(true);
+  groups = (res && res.groups) ? res.groups : groups;
+  eventsAll = (res && res.events) ? res.events : [];
+  // メモ編集中はサーバーのメモで上書きしない（自分の入力を守る）
+  if(!editing){ memos = (res && res.memos) ? res.memos : {}; }
+  dbg('接続OK / イベント'+eventsAll.length+'件 / '+ (groups.length) +'グループ');
+  renderTabs();
+  if(editing){ renderEventsOnly(); }  // 編集中はイベント部分だけ更新
+  else { renderBody(); }
 }
-function renderGroupChoices(){
-  var box=document.getElementById('jg-groups');
-  if(!GROUPS.length){ box.innerHTML='<div class="jg-loading">グループが登録されていません。ファシリテーターに連絡してください。</div>'; return; }
-  box.innerHTML = GROUPS.map(function(g){
-    var cc=colorClass(g.color);
-    return '<button class="jg-g" data-g="'+esc(g.name)+'" onclick="selectGroup(this)">'+
-      '<span class="dot dot-'+cc+'"></span>'+esc(g.name)+'</button>';
+
+// タブ一覧（全体＋各グループ）
+function renderTabs(){
+  var el=document.getElementById('tabs');
+  var tabs=[{name:ALL, color:'all', label:'🌐 全体'}];
+  groups.forEach(function(g){ tabs.push({name:g.name, color:colorClass(g.color), label:g.name}); });
+
+  el.innerHTML=tabs.map(function(t){
+    var list=eventsForTab(t.name);
+    var cnt=list.length;
+    var seen=seenCount[t.name]||0;
+    var hasNew = cnt>seen && t.name!==curTab;
+    return '<button class="tab '+(t.name===curTab?'on':'')+(hasNew?' hasnew':'')+'" onclick="selectTab(\''+esc(t.name).replace(/'/g,"\\'")+'\')">'+
+      '<span class="dot dot-'+t.color+'"></span>'+esc(t.label)+
+      '<span class="cnt">'+cnt+'</span><span class="newbadge"></span></button>';
   }).join('');
 }
-function selectGroup(btn){
-  selectedGroup = btn.getAttribute('data-g');
-  var all=document.querySelectorAll('#jg-groups .jg-g');
-  for(var i=0;i<all.length;i++) all[i].classList.toggle('sel', all[i]===btn);
-}
-function doJoin(){
-  var name=(document.getElementById('jg-name').value||'').trim();
-  var err=document.getElementById('jg-err');
-  if(!name){ err.textContent='お名前を入力してください。'; return; }
-  if(!selectedGroup){ err.textContent='グループを選んでください。'; return; }
-  err.textContent='';
-  document.getElementById('jg-go').disabled=true;
-  document.getElementById('jg-go').textContent='参加中…';
 
-  // GASに登録（POST）。失敗してもローカルで参加は続行できる。
+// タブに属するイベント（全体=all宛て＋全部、グループ=そのグループ＋all宛て）
+function eventsForTab(tab){
+  if(tab===ALL){ return eventsAll.slice(); }
+  return eventsAll.filter(function(ev){ return ev.group===tab || ev.group===ALL; });
+}
+
+function selectTab(name){
+  // メモ編集中に切り替える場合は破棄確認
+  if(editing){
+    if(!confirm('メモが保存されていません。切り替えると入力内容が失われます。よろしいですか？')) return;
+    editing=false;
+  }
+  curTab=name;
+  // 既読を更新
+  seenCount[name]=eventsForTab(name).length; saveSeen();
+  renderTabs(); renderBody();
+}
+
+function eventsListHtml(){
+  var list=eventsForTab(curTab).slice().reverse();
+  if(!list.length){
+    return '<div class="empty">まだこのタブにイベントはありません。<br>ファシリテーターが送信すると、ここに掲示されます。</div>';
+  }
+  return '<div class="sec-h">📌 届いたイベント（新しい順・'+list.length+'件）</div>'+
+    list.map(function(ev){
+      var cls=ev.severity==='danger'?'danger':ev.severity==='warn'?'warn':'';
+      var g = (ev.group && ev.group!==ALL) ? ev.group : '全体';
+      return '<div class="evitem '+cls+'"><div class="eh">'+
+        '<span class="etag">'+esc(ev.tag||'状況')+'</span>'+
+        '<span class="egrp">'+esc(g)+'</span>'+
+        '<span class="etime">'+esc(ev.time||'')+'</span></div>'+
+        '<div class="et">'+esc(ev.title||'')+'</div>'+
+        (ev.detail?'<div class="ed">'+esc(ev.detail)+'</div>':'')+'</div>';
+    }).join('');
+}
+
+// 編集中：メモ欄はそのまま、イベント一覧だけ差し替え
+function renderEventsOnly(){
+  var holder=document.getElementById('evholder');
+  if(holder){ holder.innerHTML=eventsListHtml(); }
+}
+
+function renderBody(){
+  var main=document.getElementById('main');
+  var tabLabel = curTab===ALL ? '全体' : curTab;
+
+  var memoHtml='';
+  if(curTab!==ALL){
+    var m=memos[curTab]||{text:'',updated:''};
+    memoHtml =
+      '<div class="memo"><h3>📝 '+esc(tabLabel)+' のメモ（全員で共有）</h3>'+
+      '<textarea id="memoText" placeholder="このグループの方針・気づき・決定事項を書き込みましょう。保存すると全員に共有されます。" '+
+        'oninput="onMemoInput()">'+esc(m.text)+'</textarea>'+
+      '<div class="mfoot"><button class="msave" onclick="saveMemo()">保存する</button>'+
+      '<span class="mstat" id="memoStat">'+(m.updated?('最終更新 '+esc(m.updated)):'')+'</span></div></div>';
+  }
+
+  main.innerHTML = memoHtml + '<div id="evholder">'+eventsListHtml()+'</div>';
+}
+
+// メモ入力開始（ポーリングでの上書きを止める）
+function onMemoInput(){ editing=true; }
+
+// メモ保存（GAS共有）
+function saveMemo(){
+  var ta=document.getElementById('memoText');
+  if(!ta) return;
+  var text=ta.value;
+  var stat=document.getElementById('memoStat');
+  stat.textContent='保存中…';
   fetch(GAS_URL, {
     method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({action:'join', name:name, group:selectedGroup})
+    body: JSON.stringify({action:'saveMemo', group:curTab, text:text})
   }).then(function(r){return r.json();}).then(function(res){
-    finishJoin(name, selectedGroup, res && res.id ? res.id : null);
-  }).catch(function(){
-    finishJoin(name, selectedGroup, null);
-  });
-}
-function finishJoin(name, group, id){
-  var g = GROUPS.filter(function(x){return x.name===group;})[0];
-  MY = { id:id, name:name, group:group, color: g?colorClass(g.color):'blue' };
-  try{ localStorage.setItem('sos_member', JSON.stringify(MY)); }catch(e){}
-  applyMember();
-  document.getElementById('joingate').classList.add('hide');
-  // 参加後、そのグループのイベントを最初から受信し直す
-  resetSeen();
-}
-function applyMember(){
-  var b=document.getElementById('gbadge');
-  if(MY.name && MY.group){
-    b.textContent = MY.group + '／' + MY.name;
-    b.className = 'gbadge g-' + colorClass(MY.color);
-    b.style.display='inline-block';
-  } else {
-    b.style.display='none';
-  }
-}
-function leaveGroup(){
-  if(!confirm('名前とグループを変更しますか？（この端末の登録を解除します）')) return;
-  // GASから退出（任意）
-  if(MY.id){
-    try{
-      fetch(GAS_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body: JSON.stringify({action:'leave', id:MY.id})});
-    }catch(e){}
-  }
-  MY = { id:null, name:null, group:null, color:null };
-  try{ localStorage.removeItem('sos_member'); }catch(e){}
-  selectedGroup=null;
-  document.getElementById('setpanel').classList.remove('show');
-  document.getElementById('jg-go').disabled=false;
-  document.getElementById('jg-go').textContent='この内容で参加する ✓';
-  document.getElementById('jg-name').value='';
-  document.getElementById('joingate').classList.remove('hide');
-  applyMember();
-  loadGroups();
-}
-
-
-var POLL_MS = 4000;          // 取得間隔
-var queue = [];              // 表示待ちイベント
-var showing = false;
-var evHistory = [];
-var queued = {};             // 取得済みidの記録（二重登録防止）
-var currentEvId = null;      // 現在ポップアップ表示中のイベントid
-
-// 「どのidまで表示したか（＝既読）」をブラウザに記憶。
-// 既読IDは "ポップアップを閉じたとき" にだけ進める（通信不安定でも取りこぼさない）。
-var SEEN_KEY = 'shelter_seen_id';
-var lastId = 0;
-try { lastId = parseInt(localStorage.getItem(SEEN_KEY) || '0', 10) || 0; } catch(e){ lastId = 0; }
-
-function saveSeen(id){ try{ localStorage.setItem(SEEN_KEY, String(id)); }catch(e){} }
-
-var SEV = {
-  info:   {ic:'ℹ️', label:'お知らせ'},
-  warn:   {ic:'⚠️', label:'注意が必要'},
-  danger: {ic:'🚨', label:'緊急事態'}
-};
-
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function setConn(ok){
-  var c=document.getElementById('conn'); c.className='conn'+(ok?' ok':'');
-  document.getElementById('conntxt').textContent = ok ? '接続中' : '未接続';
-}
-
-function dbg(msg){
-  var d=document.getElementById('dbg'); if(d) d.textContent=msg;
-}
-
-// 既読をリセット（テスト用：もう一度すべてのイベントを受信し直す）
-function resetSeen(){
-  lastId = 0;
-  saveSeen(0);
-  queue = [];
-  evHistory = [];
-  queued = {};
-  currentEvId = null;
-  dbg('既読をリセットしました。次回取得から全イベントを受信します。');
-}
-
-function beep(){
-  try{
-    var ctx=new (window.AudioContext||window.webkitAudioContext)();
-    var o=ctx.createOscillator(), g=ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.type='sine'; o.frequency.value=880;
-    g.gain.setValueAtTime(.0001,ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(.25,ctx.currentTime+.02);
-    g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.5);
-    o.start(); o.stop(ctx.currentTime+.5);
-  }catch(e){}
-}
-
-var jsonpBusy = false;       // 多重リクエスト防止
-var jsonpSeq = 0;            // コールバック名の連番
-
-function handlePollResult(res){
-  setConn(true);
-  var n = (res.events && res.events.length) ? res.events.length : 0;
-  dbg('接続OK / 既読ID:'+lastId+' / 未表示:'+queue.length+'件 / サーバー最新ID:'+(res.lastId!=null?res.lastId:'?'));
-  if(n){
-    res.events.forEach(function(ev){
-      if(!ev || ev.id==null) return;
-      if(ev.id<=lastId) return;
-      if(queued[ev.id]) return;
-      queued[ev.id]=true;
-      queue.push(ev);
-      evHistory.push(ev);
-    });
-    try { renderHistory(); } catch(e){ /* 履歴描画で失敗してもポップアップは出す */ }
-    pump();
-  }
-}
-
-// JSONP方式：<script>タグで取得することで GAS の302リダイレクトを回避する
-function poll(){
-  if(!MY.name || !MY.group){ return; }  // 未登録なら受信しない
-  if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){ setConn(false); dbg('GAS_URL未設定'); return; }
-  if(jsonpBusy) return;   // 前回未完了ならスキップ
-  jsonpBusy = true;
-
-  var cbName = 'gasCb_' + (++jsonpSeq) + '_' + Date.now();
-  var script = document.createElement('script');
-  var done = false;
-
-  function cleanup(){
-    if(done) return;
-    done = true;
-    jsonpBusy = false;
-    try { delete window[cbName]; } catch(e){ window[cbName] = undefined; }
-    if(script.parentNode) script.parentNode.removeChild(script);
-    clearTimeout(timer);
-  }
-
-  window[cbName] = function(res){ handlePollResult(res); cleanup(); };
-
-  var timer = setTimeout(function(){
-    setConn(false);
-    dbg('通信エラー（応答なし・次回再取得します）');
-    cleanup();
-  }, POLL_MS + 6000);
-
-  script.onerror = function(){
-    setConn(false);
-    dbg('通信エラー（次回再取得します）');
-    cleanup();
-  };
-
-  script.src = GAS_URL + '?action=poll&since=' + lastId + '&group=' + encodeURIComponent(MY.group||'all') + '&callback=' + cbName;
-  document.head.appendChild(script);
-}
-
-function pump(){
-  if(showing || !queue.length) return;
-  showPopup(queue.shift());
-}
-
-function showPopup(ev){
-  showing=true;
-  currentEvId = ev.id;   // 表示中イベントのidを覚えておく
-  var sev = SEV[ev.severity] || SEV.info;
-  var pop=document.getElementById('popup');
-  pop.className='popup '+(ev.severity||'info');
-  document.getElementById('p-ic').textContent=sev.ic;
-  document.getElementById('p-tag').textContent=ev.tag||'状況';
-  document.getElementById('p-sev').textContent=sev.label;
-  document.getElementById('p-title').textContent=ev.title||'';
-  document.getElementById('p-detail').textContent=ev.detail||'';
-  document.getElementById('p-time').textContent='発生 '+(ev.time||'');
-  document.getElementById('p-queue').textContent = queue.length ? ('待機 '+queue.length+'件') : '';
-  document.getElementById('overlay').classList.add('show');
-  beep();
-}
-
-function closePopup(){
-  // 見終わった＝この時点で初めて既読IDを確定・保存（取りこぼし防止）
-  if(currentEvId && currentEvId>lastId){ lastId=currentEvId; saveSeen(lastId); }
-  currentEvId = null;
-  document.getElementById('overlay').classList.remove('show');
-  showing=false;
-  setTimeout(pump, 350); // 次のイベントがあれば続けて表示
-}
-
-function renderHistory(){
-  var hl=document.getElementById('hlist');
-  if(!hl) return;
-  if(!evHistory.length){ return; }
-  var tg=document.getElementById('toggle');
-  if(tg) tg.style.display='block';
-  hl.innerHTML = evHistory.slice().reverse().map(function(ev){
-    if(!ev) return '';
-    var sev = ev.severity;
-    var cls = sev==='danger'?'danger':sev==='warn'?'warn':'';
-    return '<div class="hitem '+cls+'"><div class="hh"><span class="htag">'+esc(ev.tag)+'</span>'+
-      '<span class="htime">'+esc(ev.time)+'</span></div>'+
-      '<div class="ht">'+esc(ev.title)+'</div>'+
-      (ev.detail?'<div class="hd">'+esc(ev.detail)+'</div>':'')+'</div>';
-  }).join('');
-}
-
-var histOpen=false;
-function toggleHistory(){
-  histOpen=!histOpen;
-  document.getElementById('history').style.display=histOpen?'block':'none';
-  document.getElementById('wait').style.display=histOpen?'none':'flex';
-  document.getElementById('toggle').textContent=histOpen?'✕ 閉じる':'📜 履歴';
+    editing=false;
+    if(res && res.ok){
+      if(!memos[curTab]) memos[curTab]={};
+      memos[curTab].text=text; memos[curTab].updated=res.updated||'';
+      stat.textContent='保存しました（'+(res.updated||'')+'）';
+    } else { stat.textContent='保存に失敗しました'; }
+  }).catch(function(){ editing=false; stat.textContent='通信エラーで保存できませんでした'; });
 }
 
 // ===== 起動 =====
-applyMember();
-if(MY.name && MY.group){
-  // 登録済み：ゲートを隠してすぐ受信開始
-  document.getElementById('joingate').classList.add('hide');
-} else {
-  // 未登録：ゲートを表示してグループ選択
-  document.getElementById('joingate').classList.remove('hide');
-  loadGroups();
-}
 poll();
 setInterval(poll, POLL_MS);
 </script>
