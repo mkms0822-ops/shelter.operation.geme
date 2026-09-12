@@ -36,81 +36,66 @@
     img.hero-pc{display:block;border-radius:14px;box-shadow:0 10px 40px rgba(18,58,94,.18)}
     img.hero-sp{display:none}
     .hero{padding:24px}
-    .hero-wrap{max-width:1200px}
+    .hero-wrap{max-width:804px}  /* 1200px の 67% */
   }
 
   /* スタートボタン：画像の下（余白）に配置。画像は一切隠さない */
-  .startbar{
+  /* ===== 役割選択カード ===== */
+  .rolecards{
     width:100%;
-    display:flex;justify-content:center;
-    padding:22px 16px 8px;
+    display:flex;justify-content:center;flex-wrap:wrap;gap:14px;
+    padding:8px 16px 26px;
+    max-width:820px;margin:0 auto;
   }
-  .start{
-    position:relative;
-    display:inline-flex;align-items:center;gap:12px;
-    background:var(--navy);
-    color:#fff;
-    border:0;
-    border-radius:999px;
-    font-family:inherit;
-    font-weight:800;
-    font-size:clamp(17px,2.4vw,24px);
-    letter-spacing:.04em;
-    padding:clamp(14px,1.8vw,20px) clamp(30px,4vw,54px);
-    cursor:pointer;
-    box-shadow:0 8px 24px rgba(13,43,71,.4), 0 2px 0 rgba(255,255,255,.15) inset;
-    transition:transform .12s ease, background .12s ease, box-shadow .12s ease;
+  .rolecard{
+    flex:1 1 220px;max-width:250px;
+    background:#fff;
+    border:1px solid rgba(18,58,94,.15);
+    border-radius:16px;
+    padding:22px 18px;
     text-decoration:none;
+    color:var(--ink);
+    box-shadow:0 6px 20px rgba(18,58,94,.10);
+    transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    text-align:center;
+    position:relative;
   }
-  .start:hover{
-    background:var(--navy-d);
-    transform:translateY(-2px);
-    box-shadow:0 12px 30px rgba(13,43,71,.5);
+  .rolecard:hover{
+    transform:translateY(-3px);
+    box-shadow:0 12px 30px rgba(18,58,94,.18);
+    border-color:var(--navy);
   }
-  .start:active{ transform:translateY(0) }
-  .start:focus-visible{ outline:3px solid #ffd34d; outline-offset:3px }
-  .start .tri{
-    width:0;height:0;
-    border-style:solid;
-    border-width:9px 0 9px 15px;
-    border-color:transparent transparent transparent #fff;
-    margin-left:2px;
+  .rolecard:focus-visible{ outline:3px solid #ffd34d; outline-offset:3px }
+  .rolecard .ic{font-size:40px;line-height:1;margin-bottom:10px}
+  .rolecard .rt{font-size:18px;font-weight:900;color:var(--navy);margin-bottom:6px}
+  .rolecard .rd{font-size:12.5px;color:#5a6b78;line-height:1.65}
+  .rolecard .go{
+    display:inline-block;margin-top:14px;
+    font-size:13px;font-weight:800;color:#fff;
+    background:var(--navy);border-radius:999px;
+    padding:9px 22px;
   }
-  /* ゆっくり脈打つ光輪で「ここから始まる」を示す（動きは1箇所だけ） */
-  .start::before{
-    content:"";
-    position:absolute;inset:0;
-    border-radius:999px;
-    box-shadow:0 0 0 0 rgba(18,58,94,.45);
-    animation:beat 2.6s ease-out infinite;
+  .rolecard.facil{border-style:dashed}
+  .rolecard.facil .go{background:var(--steel,#3f6f8f)}
+  /* トップの脈打ちは主役割（プレイヤー）だけ */
+  .rolecard.primary::before{
+    content:"";position:absolute;inset:-1px;border-radius:16px;
+    box-shadow:0 0 0 0 rgba(18,58,94,.4);
+    animation:beat 2.6s ease-out infinite;pointer-events:none;
   }
   @keyframes beat{
-    0%{box-shadow:0 0 0 0 rgba(18,58,94,.45)}
-    70%{box-shadow:0 0 0 18px rgba(18,58,94,0)}
+    0%{box-shadow:0 0 0 0 rgba(18,58,94,.4)}
+    70%{box-shadow:0 0 0 14px rgba(18,58,94,0)}
     100%{box-shadow:0 0 0 0 rgba(18,58,94,0)}
   }
   @media(prefers-reduced-motion:reduce){
-    .start::before{animation:none}
-    .start:hover{transform:none}
+    .rolecard.primary::before{animation:none}
+    .rolecard:hover{transform:none}
   }
-
-  /* サブ操作（役割選択）を小さく添える */
-  .roles{
-    width:100%;
-    display:flex;justify-content:center;gap:10px;
-    padding:0 16px 22px;
+  .lead{
+    text-align:center;font-size:14px;color:var(--navy);font-weight:700;
+    padding:18px 16px 2px;
   }
-  .roles a{
-    font-size:clamp(11px,1.4vw,13px);
-    font-weight:700;
-    color:var(--navy);
-    background:#fff;
-    border:1px solid rgba(18,58,94,.25);
-    border-radius:999px;
-    padding:7px 16px;
-    text-decoration:none;
-  }
-  .roles a:hover{background:#eef2f5}
 </style>
 </head>
 <body>
@@ -123,18 +108,27 @@
       <img class="hero-img hero-pc" src="top_pc.jpg" alt="Shelter Operation Studio 避難所運営机上訓練 支え合い、明日へ">
     </div>
 
-    <!-- 画像の下に配置するスタートボタン（画像は隠さない） -->
-    <div class="startbar">
-      <a class="start" href="player.html">
-        <span class="tri"></span>
-        <span>訓練をはじめる</span>
+    <!-- 役割を選んで入室 -->
+    <p class="lead">参加する役割を選んでください</p>
+    <div class="rolecards">
+      <a class="rolecard primary" href="player.html">
+        <div class="ic">🚨</div>
+        <div class="rt">プレイヤー</div>
+        <div class="rd">イベント通知を受け取り、チームで対応を話し合います。まずはこちら。</div>
+        <span class="go">参加する ▶</span>
       </a>
-    </div>
-
-    <!-- 役割選択（プレイヤー／ファシリテーター） -->
-    <div class="roles">
-      <a href="player.html">プレイヤー画面</a>
-      <a href="facilitator.html">ファシリテーター用</a>
+      <a class="rolecard" href="shelter_planner.html">
+        <div class="ic">🗺️</div>
+        <div class="rt">プランナー</div>
+        <div class="rd">避難所の間取りを作り、配置を動かしながら対応を検討します。通知も届きます。</div>
+        <span class="go">配置する ▶</span>
+      </a>
+      <a class="rolecard facil" href="facilitator.html">
+        <div class="ic">🎛️</div>
+        <div class="rt">ファシリテーター</div>
+        <div class="rd">進行役。グループ管理とイベント送信を行います（合言葉が必要）。</div>
+        <span class="go">運営する ▶</span>
+      </a>
     </div>
   </div>
 
