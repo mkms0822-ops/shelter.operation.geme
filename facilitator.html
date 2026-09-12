@@ -34,6 +34,18 @@
   /* プリセットイベント */
   .presets{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:560px){ .presets{grid-template-columns:1fr} }
+  .cardsearch{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;color:var(--ink);margin-bottom:12px}
+  .cardsearch:focus{outline:none;border-color:var(--steel)}
+  .catblock{border:1px solid var(--line);border-radius:11px;margin-bottom:9px;overflow:hidden}
+  .cathead{width:100%;display:flex;align-items:center;gap:10px;background:#f4f8fb;border:0;padding:12px 14px;cursor:pointer;font-family:inherit;text-align:left}
+  .cathead:hover{background:#eef4f8}
+  .cathead.open{background:#e8f0f6}
+  .cathead .cicon{font-size:18px}
+  .cathead .cname{font-size:14.5px;font-weight:800;color:var(--navy)}
+  .cathead .ccount{font-size:11px;font-weight:800;color:#fff;background:var(--steel);border-radius:10px;padding:2px 9px;margin-left:auto}
+  .cathead .carrow{font-size:11px;color:var(--sub);width:14px;text-align:center}
+  .catbody{padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:9px;background:#fff}
+  @media(max-width:560px){ .catbody{grid-template-columns:1fr} }
   .preset{border:1px solid var(--line);border-left:4px solid var(--info);border-radius:10px;padding:11px 12px;cursor:pointer;background:#fff;transition:.12s;position:relative}
   .preset:hover{border-color:var(--steel);transform:translateY(-1px);box-shadow:0 3px 10px rgba(20,45,70,.12)}
   .preset.warn{border-left-color:var(--warn)}
@@ -137,8 +149,10 @@
     <div>
       <!-- プリセットイベント -->
       <div class="card">
-        <h2>⚡ イベントを発生させる <span class="n">クリックでプレイヤー画面にポップアップ</span></h2>
-        <div class="presets" id="presets"></div>
+        <h2>⚡ イベントを発生させる <span class="n">カテゴリーをタップで展開・カードをタップで送信</span></h2>
+        <input type="text" id="cardsearch" class="cardsearch" placeholder="🔍 キーワードで検索（例：トイレ、糖尿病、余震…）" oninput="renderPresets()">
+        <div id="catlist"></div>
+        <div class="presets" id="presets" style="display:none"></div>
       </div>
 
       <!-- 送信ログ（スマホでは下に来る） -->
@@ -270,18 +284,136 @@ function lockAgain(){
 
 // プリセットイベント（避難所運営の実話ベース）
 var PRESETS = [
-  {tag:'夜間・要配慮', severity:'warn', title:'認知症の方が夜間に出口へ向かう', detail:'夜、認知症の高齢者が「家に帰る」と出入口へ。家族は疲れて眠っている。どこで見守り、誰が対応する？'},
-  {tag:'衛生', severity:'warn', title:'トイレの行列と衛生の悪化', detail:'仮設トイレが不足し行列。特に女性・高齢者から不満。数・位置・動線・清掃をどう見直す？'},
-  {tag:'ペット', severity:'info', title:'夜のペットの鳴き声で苦情', detail:'ペット同伴者と、動物が苦手な人・アレルギーの人が近接。ゾーンの位置とルールをどう調整する？'},
-  {tag:'医療', severity:'danger', title:'発熱者が複数、感染の疑い', detail:'発熱・嘔吐を訴える人が数名。一般スペースと動線をどう分け、どこに隔離を設ける？'},
-  {tag:'対応', severity:'info', title:'報道機関が館内の撮影を希望', detail:'テレビ局が避難所内の撮影を申し出た。被災者のプライバシーと、窓口の一本化をどう扱う？'},
-  {tag:'物資', severity:'info', title:'物資が大量に届いた', detail:'水・毛布・食料がトラックで到着。保管場所、公平な配布、記録の付け方をどう決める？'},
-  {tag:'要配慮', severity:'warn', title:'重度の要介護者の受け入れ', detail:'一般避難所では対応が難しい要介護者が来た。当面のケアと、福祉避難所への移送をどう判断する？'},
-  {tag:'ライフライン', severity:'danger', title:'停電が発生した', detail:'夜間に停電。照明・情報・医療機器に影響。優先順位と、非常電源・懐中電灯の配分をどうする？'},
-  {tag:'安全', severity:'danger', title:'余震で天井材が落下', detail:'大きな余震があり、一部で天井材が落下。負傷者確認と、危険エリアの立入制限をどう指示する？'},
-  {tag:'受付', severity:'info', title:'避難者が一度に大勢到着', detail:'バスで避難者が続々到着し受付が混雑。受付の増設・動線・要配慮者の優先をどう捌く？'},
-  {tag:'トラブル', severity:'warn', title:'場所取り・スペースの争い', detail:'良い場所をめぐり住民同士でトラブル。区画のルールと、公平な割り当てをどう決める？'},
-  {tag:'情報', severity:'info', title:'デマが広がっている', detail:'「物資がもう来ない」等のうわさが拡散。正確な情報の掲示・周知の仕組みをどう作る？'},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"熱中症",severity:"danger",title:"室温が上がり熱中症の症状を訴える人が続出",detail:"空調が不足し日中の気温が上昇。高齢者や子どもがぐったり。冷却・水分・涼しい場所の確保をどうする？"},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"しもやけ・低体温",severity:"warn",title:"冷え込みで低体温・しもやけの訴え",detail:"夜間の冷え込みが厳しく、毛布が不足。高齢者に低体温の兆候。暖房と防寒具の配分をどう決める？"},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"乾燥",severity:"info",title:"空気の乾燥で喉の不調・肌荒れが増加",detail:"暖房で空気が乾燥し、咳や肌荒れの訴え。加湿・こまめな水分補給・換気のバランスをどうする？"},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"多湿・カビ",severity:"warn",title:"梅雨時の多湿で寝具にカビ",detail:"湿度が高く寝具や床がじめじめ。カビや異臭が発生。換気・除湿・寝具の乾燥をどう回す？"},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"花粉・アレルギー",severity:"info",title:"花粉の飛散でアレルギー症状",detail:"花粉シーズンでくしゃみ・目のかゆみを訴える人が増加。換気と症状緩和をどう両立する？"},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"猛暑の停電",severity:"danger",title:"猛暑日に空調が止まった",detail:"気温35℃超の日に空調が停止。熱中症リスクが急上昇。優先的に冷やす場所と人をどう決める？"},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"大雪・積雪",severity:"warn",title:"大雪で出入口や物資搬入が困難",detail:"積雪で出入口が塞がれ、支援物資のトラックが近づけない。除雪と搬入経路をどう確保する？"},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"台風接近の蒸し暑さ",severity:"info",title:"台風前の蒸し暑さで体調不良",detail:"台風接近で気圧が下がり、頭痛やだるさの訴え。窓を閉め切る中での暑さ対策をどうする？"},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"インフル流行期",severity:"warn",title:"季節性インフルエンザの流行期",detail:"外部で流行が始まり、避難所内でも発熱者が。予防・隔離・マスク配布をどう進める？"},
+  {cat:"季節",icon:"🌦",tag:"季節",kw:"日照不足の気分不調",severity:"info",title:"曇天続きで気分の落ち込み",detail:"悪天候が続き屋外に出られず、気分の落ち込みを訴える人が増加。心のケアと居場所をどう作る？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"トイレ不足",severity:"warn",title:"仮設トイレが足りず行列",detail:"トイレの数が足りず長い行列。特に女性・高齢者から不満。数・位置・動線をどう見直す？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"トイレの衛生悪化",severity:"danger",title:"トイレが汚れ悪臭・不衛生に",detail:"清掃が追いつかずトイレが不衛生に。感染源になりかねない。清掃当番と消耗品補充をどう回す？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"ノロウイルス疑い",severity:"danger",title:"嘔吐・下痢が複数、ノロの疑い",detail:"同時期に嘔吐・下痢の人が複数。ノロウイルスの疑い。隔離・消毒・調理担当の扱いをどうする？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"手指消毒の不足",severity:"info",title:"手指消毒液が底をつきそう",detail:"消毒液の在庫が残りわずか。感染対策の要が失われる。代替策と補充要請をどうする？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"ゴミの滞留",severity:"warn",title:"ゴミが回収されず山積みに",detail:"ゴミ収集が止まり、生ゴミが腐敗。悪臭と害虫の懸念。分別・保管・臨時処理をどう決める？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"入浴・洗濯できない",severity:"info",title:"長期間入浴・洗濯ができない",detail:"断水で入浴も洗濯もできず、衛生状態が悪化。清拭・簡易シャワー・洗濯支援をどう手配する？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"食中毒の発生",severity:"danger",title:"配給食で食中毒が疑われる",detail:"同じ配給を食べた複数人が腹痛・嘔吐。食中毒の疑い。原因究明と提供停止をどう進める？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"害虫・ネズミ",severity:"warn",title:"ハエ・ネズミが発生",detail:"食料保管場所周辺にハエやネズミ。衛生と食料汚染の懸念。駆除と保管方法の見直しをどうする？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"マスク不足",severity:"info",title:"マスクの在庫が不足",detail:"感染対策のマスクが不足。咳をする人も増加。優先配布と代替・補充をどう判断する？"},
+  {cat:"衛生",icon:"🚽",tag:"衛生",kw:"汚物処理の困りごと",severity:"warn",title:"使用済みオムツ・汚物の処理",detail:"乳幼児や要介護者の使用済みオムツの処理場所がない。臭気と衛生の問題をどう解決する？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"糖尿病・インスリン",severity:"danger",title:"インスリンが切れそうな糖尿病の方",detail:"持病の糖尿病でインスリンの残りが少ない避難者。入手手段が限られる。医療機関との連携をどうする？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"透析患者",severity:"danger",title:"透析が必要な避難者がいる",detail:"定期的な人工透析が必要な人が避難。透析施設まで移動が困難。搬送と医療調整をどう進める？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"けが・外傷",severity:"warn",title:"転倒でけが人が出た",detail:"暗がりや段差で転倒し負傷者が発生。応急手当と、医療機関への搬送判断をどうする？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"アレルギー反応",severity:"danger",title:"食物アレルギーで発症",detail:"配給食を食べた人がアレルギー症状。重症化の恐れ。原材料表示と代替食の管理をどうする？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"認知症の方の対応",severity:"warn",title:"認知症の方が落ち着かない",detail:"環境の変化で認知症の方が混乱し徘徊。家族も疲弊。見守り体制と安心できる居場所をどう作る？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"パーキンソン病",severity:"warn",title:"パーキンソン病の方の服薬管理",detail:"パーキンソン病で時間通りの服薬が必要な方。薬の確保と、動作補助をどう支える？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"服薬問題・お薬手帳なし",severity:"warn",title:"常用薬が分からず服薬が中断",detail:"お薬手帳を持ち出せず、常用薬が不明のまま服薬が中断。医療者への引き継ぎをどうする？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"妊婦の体調急変",severity:"danger",title:"妊婦が腹痛を訴えている",detail:"妊娠中の避難者が腹痛を訴える。産科への連絡と搬送、プライバシー確保をどう進める？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"在宅酸素・医療機器",severity:"danger",title:"在宅酸素の方の電源確保",detail:"在宅酸素療法の方が避難。停電で機器が使えないと命に関わる。非常電源の優先配分をどうする？"},
+  {cat:"医療・介護",icon:"🏥",tag:"医療・介護",kw:"メンタルヘルス",severity:"info",title:"強い不安・不眠を訴える方",detail:"被災のショックで強い不安や不眠を訴える人が増加。相談窓口と専門家への橋渡しをどうする？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"妊産婦",severity:"warn",title:"授乳・おむつ替えの場所がない",detail:"妊産婦や乳児連れが授乳・おむつ替えできる場所がない。専用スペースの確保をどうする？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"外国人・言葉の壁",severity:"warn",title:"日本語が分からない外国人避難者",detail:"日本語が通じない外国人が避難。情報が伝わらず不安。多言語対応と通訳をどう手配する？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"乳幼児",severity:"info",title:"乳幼児の泣き声と周囲への配慮",detail:"夜間の乳幼児の泣き声で周囲とトラブル気味。親も疲弊。専用ゾーンと周囲の理解をどう作る？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"視覚障がい",severity:"warn",title:"視覚障がいの方の移動支援",detail:"視覚障がいの方が館内を移動しにくい。誘導と、レイアウトの分かりやすさをどう工夫する？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"聴覚障がい",severity:"warn",title:"聴覚障がいの方に放送が届かない",detail:"音声放送が聴覚障がいの方に届かない。文字・掲示・手話など情報保障をどう整える？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"肢体不自由・車いす",severity:"warn",title:"車いすの方の通路とトイレ",detail:"車いすの方が通路や多目的トイレを使いにくい。バリアフリー動線をどう確保する？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"高齢者の孤立",severity:"info",title:"高齢者が誰とも話さず孤立",detail:"一人暮らしの高齢者が誰とも話さず孤立。体調悪化の懸念。声かけと見守りをどう仕組み化する？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"知的・発達障がい",severity:"warn",title:"環境変化で強い不安・パニック",detail:"知的・発達障がいの方が環境変化でパニック。落ち着ける環境と、周囲の理解をどう作る？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"医療的ケア児",severity:"danger",title:"医療的ケアが必要な子ども",detail:"たん吸引など医療的ケアが必要な子どもが避難。専門的ケアと家族支援をどう手配する？"},
+  {cat:"要配慮者",icon:"🤝",tag:"要配慮者",kw:"ひとり親家庭",severity:"info",title:"ひとり親で手が回らない",detail:"ひとり親で複数の子を抱え手が回らない。育児・生活の負担軽減をどう支える？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"犬の鳴き声",severity:"info",title:"犬の鳴き声で苦情",detail:"夜間、犬の鳴き声で眠れないと苦情。飼い主と非飼い主の折り合いをどうつける？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"猫の脱走",severity:"warn",title:"猫がケージから脱走",detail:"猫がケージから逃げ出し館内に。捕獲と、他の避難者への配慮をどうする？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"ペットの排泄",severity:"warn",title:"ペットの排泄場所とにおい",detail:"ペットの排泄場所が決まらず、においや衛生の問題。専用エリアとルールをどう作る？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"動物アレルギー",severity:"warn",title:"動物アレルギーの人と近接",detail:"ペット同伴者の近くにアレルギーの人。症状が出て困っている。ゾーン分けをどうする？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"ペットの体調不良",severity:"info",title:"ペットが体調を崩した",detail:"避難所生活のストレスでペットが体調不良。動物病院との連携と応急対応をどうする？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"ペットフード不足",severity:"info",title:"ペットフードが足りない",detail:"ペット用の food が尽きそう。人の物資との兼ね合い。調達と配分をどう考える？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"同行避難の可否",severity:"warn",title:"ペット同行避難を断られた不満",detail:"ペット同行避難の可否でもめている。受け入れ方針とルールをどう説明・運用する？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"大型犬・多頭飼い",severity:"warn",title:"大型犬・多頭飼いのスペース",detail:"大型犬や多頭飼いの世帯でスペースが不足。安全な配置と周囲の安心をどう両立する？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"鳴き声のストレス",severity:"info",title:"動物のストレスで鳴き続ける",detail:"環境変化で動物が鳴き続けストレス状態。落ち着ける環境づくりをどう工夫する？"},
+  {cat:"ペット",icon:"🐾",tag:"ペット",kw:"逃げたペット探し",severity:"warn",title:"外に逃げたペットを探したい",detail:"混乱で外に逃げたペットを探したいと飼い主。安全確保と捜索のルールをどうする？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"報道機関の取材",severity:"info",title:"報道機関が取材を希望",detail:"テレビ局が館内取材を希望。被災者のプライバシーと窓口一本化をどう扱う？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"セクハラ",severity:"danger",title:"セクシュアルハラスメントの訴え",detail:"共同生活の中でセクハラの訴え。被害者保護と、加害者対応・再発防止をどう進める？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"パワハラ・威圧",severity:"warn",title:"リーダー的立場の人の威圧",detail:"自治の中で一部の人が威圧的に振る舞う。公平な運営と、声を上げにくい人への配慮をどうする？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"カスタマーハラスメント",severity:"warn",title:"職員への過度なクレーム",detail:"運営職員に過度な要求・暴言を繰り返す人。職員を守りつつ対話をどう続ける？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"SNSでの発信トラブル",severity:"info",title:"館内の様子がSNSに無断投稿",detail:"避難者の様子が無断でSNSに投稿された。プライバシーとルール周知をどうする？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"ボランティアの受け入れ",severity:"info",title:"ボランティアが多数来訪",detail:"支援ボランティアが多数来訪。役割分担と受け入れ体制、安全管理をどう整える？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"視察・来賓対応",severity:"info",title:"行政・議員の視察",detail:"行政や議員の視察が入る。運営を止めずに対応し、要望をどう伝えるか？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"差別的言動",severity:"warn",title:"特定の人への差別的言動",detail:"国籍や障がいを理由にした差別的言動が発生。人権への配慮と注意喚起をどう行う？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"プライバシー配慮",severity:"info",title:"着替え・授乳の目隠しがない",detail:"着替えや授乳の際の目隠しがなく不安の声。間仕切りと配置をどう工夫する？"},
+  {cat:"対応",icon:"📣",tag:"対応",kw:"問い合わせ殺到",severity:"warn",title:"安否確認の問い合わせが殺到",detail:"外部から安否確認の電話・来訪が殺到。対応の窓口と情報管理をどう整理する？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"停電",severity:"danger",title:"停電が発生した",detail:"夜間に停電。照明・情報・医療機器に影響。非常電源と懐中電灯の配分をどうする？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"断水",severity:"danger",title:"断水で水が使えない",detail:"断水で飲料・トイレ・清掃の水が不足。給水車の手配と節水ルールをどう決める？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"ガス停止",severity:"warn",title:"ガスが止まり調理・暖房に支障",detail:"ガス供給が止まり温かい食事や暖房が困難。代替熱源と献立をどう工夫する？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"通信障害",severity:"warn",title:"携帯・ネットがつながらない",detail:"通信障害で家族への連絡や情報収集ができない。公衆・衛星回線や掲示をどう活用する？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"交通遮断",severity:"warn",title:"道路寸断で物資・人が来ない",detail:"道路が寸断され支援物資も応援も届かない。優先順位と当面のやりくりをどうする？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"充電難民",severity:"info",title:"スマホの充電ができない",detail:"充電手段が足りず、連絡や情報が途絶えがち。充電ステーションの運用をどうする？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"非常用電源の燃料切れ",severity:"danger",title:"発電機の燃料が残り少ない",detail:"非常用発電機の燃料が残りわずか。何を優先して電気を使うか、調達をどうする？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"下水の逆流",severity:"danger",title:"下水が逆流しトイレが使えない",detail:"下水管の破損でトイレが使用不能・逆流の恐れ。代替トイレと立入制限をどうする？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"暖房・冷房停止",severity:"warn",title:"空調が止まり室温が極端に",detail:"空調停止で室温が極端になり体調不良の懸念。しのぎ方と要配慮者の保護をどうする？"},
+  {cat:"ライフライン",icon:"⚡",tag:"ライフライン",kw:"水質の不安",severity:"info",title:"給水された水の安全性に不安",detail:"給水された水の安全性に不安の声。煮沸や情報提供でどう安心を確保する？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"キャパ超過",severity:"danger",title:"収容人数を超えそう",detail:"避難者が想定を超え、収容人数の限界に。受け入れ調整と他施設への案内をどうする？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"避難者殺到",severity:"warn",title:"避難者が一度に押し寄せる",detail:"バスや徒歩で避難者が一度に殺到し受付が大混雑。動線と優先受付をどう捌く？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"受付の記録漏れ",severity:"info",title:"受付名簿の記入漏れ・重複",detail:"受付が混乱し名簿に漏れや重複。安否確認に支障。記録方法をどう立て直す？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"夜間の受付体制",severity:"info",title:"深夜の受付担当がいない",detail:"深夜に到着する避難者の受付担当が不足。当番と仮受付の仕組みをどうする？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"要配慮者の優先",severity:"warn",title:"要配慮者の受付を優先したい",detail:"高齢者・妊産婦・障がい者の受付を優先したいが列が長い。運用をどう工夫する？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"在勤・在学者の扱い",severity:"info",title:"地域外の在勤・在学者が来訪",detail:"住民でない在勤・在学者が避難。受け入れ範囲と方針をどう説明・判断する？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"車中泊者の把握",severity:"warn",title:"駐車場の車中泊者を把握できない",detail:"駐車場で車中泊する人が多数だが把握できず、支援も届かない。名簿化をどうする？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"ペット同伴の受付",severity:"info",title:"ペット同伴者の受付フロー",detail:"ペット同伴者の受付・ゾーン案内が滞る。受付フローをどう整える？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"退所・再受付",severity:"info",title:"一時退所と再入所の管理",detail:"自宅確認などで一時退所・再入所する人が多く管理が煩雑。ルールをどう決める？"},
+  {cat:"受付",icon:"📋",tag:"受付",kw:"受付での体調不良者",severity:"warn",title:"受付の列で体調を崩す人",detail:"長い受付待ちで体調を崩す人が。優先対応と待機環境の改善をどうする？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"必要カロリー不足",severity:"warn",title:"食事のカロリーが不足しがち",detail:"配給が主食中心で必要カロリー・栄養が不足。献立と栄養バランスをどう改善する？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"食物アレルギー対応",severity:"danger",title:"アレルギー対応食が足りない",detail:"アレルギーを持つ人向けの代替食が不足。誤食を防ぐ表示と配布をどうする？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"物資の偏り",severity:"info",title:"特定の食料ばかり届く",detail:"同じ食料ばかり届き栄養が偏る。在庫調整と他所との融通をどう進める？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"在庫管理",severity:"info",title:"食料の在庫が把握できない",detail:"食料の在庫が把握できず過不足が読めない。記録と発注の仕組みをどう作る？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"温かい食事",severity:"info",title:"温かい食事を提供したい",detail:"冷たい食事が続き元気が出ない。加熱手段と炊き出しをどう手配する？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"乳幼児のミルク・離乳食",severity:"warn",title:"ミルク・離乳食が足りない",detail:"乳幼児用のミルクや離乳食が不足。調乳の湯と衛生の確保をどうする？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"高齢者向けの食形態",severity:"warn",title:"やわらかい食事が必要な人",detail:"咀嚼・嚥下が難しい高齢者向けの食事がない。食形態の工夫と調達をどうする？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"配給の公平性",severity:"warn",title:"配給が行き渡らず不満",detail:"配給の数が足りず一部に行き渡らない。公平な配布順とルールをどう決める？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"賞味期限切れ",severity:"warn",title:"備蓄食料の期限が切れそう",detail:"備蓄食料の賞味期限が迫る。ロスを防ぐ消費順と入れ替えをどうする？"},
+  {cat:"食事",icon:"🍚",tag:"食事",kw:"炊き出し支援の受け入れ",severity:"info",title:"炊き出しの申し出が複数",detail:"外部から炊き出しの申し出が複数。衛生管理と時間・場所の調整をどうする？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"デマの拡散",severity:"warn",title:"根拠のないうわさが広がる",detail:"「物資がもう来ない」等のデマが拡散し不安が拡大。正確な情報の掲示と周知をどうする？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"最新被害情報",severity:"info",title:"被害・復旧の最新情報が欲しい",detail:"被害状況や復旧見込みの情報が届かず不安。情報源の確保と共有をどうする？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"行方不明者情報",severity:"warn",title:"家族の安否・行方不明の相談",detail:"家族の行方が分からない相談が相次ぐ。安否情報の集約と関係機関連携をどうする？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"情報格差",severity:"info",title:"高齢者に情報が届かない",detail:"掲示やスマホ中心で高齢者に情報が届かない。口頭・紙・放送をどう組み合わせる？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"多言語での情報提供",severity:"warn",title:"外国人向けの情報がない",detail:"外国人に必要な情報が母語で届かない。翻訳・やさしい日本語・ピクトをどう使う？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"支援制度の案内",severity:"info",title:"り災証明・支援金の問い合わせ",detail:"り災証明や支援金の手続きの質問が多い。正確な案内窓口と資料をどう用意する？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"掲示板の混乱",severity:"info",title:"掲示物が多すぎて分からない",detail:"掲示が増えすぎて必要な情報が埋もれる。掲示の整理とカテゴリ分けをどうする？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"避難所からの発信",severity:"info",title:"行政へ現場の状況を伝えたい",detail:"現場の不足や困りごとを行政へ的確に伝えたい。報告の様式と頻度をどう決める？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"SNSの情報の真偽",severity:"warn",title:"SNSの情報が錯綜",detail:"SNS上で真偽不明の情報が錯綜。確認手順と公式情報への誘導をどうする？"},
+  {cat:"情報",icon:"📰",tag:"情報",kw:"放送・アナウンス",severity:"info",title:"館内放送が聞き取りにくい",detail:"館内放送が反響して聞き取りにくい。時間帯・方法・文字併用をどう工夫する？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"余震",severity:"danger",title:"大きな余震が続く",detail:"強い余震が繰り返し発生。建物の安全確認と、危険箇所の立入制限をどう指示する？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"豪雨・浸水",severity:"danger",title:"豪雨で浸水の恐れ",detail:"記録的な豪雨で周辺の浸水・避難所自体の被災の恐れ。垂直避難や移転判断をどうする？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"台風接近",severity:"warn",title:"台風の接近で暴風の懸念",detail:"台風接近で暴風・停電・飛来物の懸念。窓の養生と屋外の安全確保をどうする？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"土砂災害の警戒",severity:"danger",title:"裏山の土砂災害が心配",detail:"裏山の斜面に亀裂。土砂災害の警戒情報。避難のタイミングと経路をどう決める？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"火災の危険",severity:"danger",title:"暖房器具まわりで発火の懸念",detail:"暖房器具やコンロ周りで発火の懸念。火気ルールと消火体制をどう整える？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"建物の損傷",severity:"warn",title:"建物の一部にひび・損傷",detail:"壁や柱にひびが見つかった。使用の可否判断と、専門家の点検依頼をどうする？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"夜間の暗さ",severity:"warn",title:"夜間の照明不足で転倒の危険",detail:"夜間の照明が不足し、通路やトイレで転倒の危険。安全な明かりの確保をどうする？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"危険物・ガス臭",severity:"danger",title:"ガスのにおいがする",detail:"館内でガスのようなにおい。引火の危険。換気・立入制限・原因確認をどう進める？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"落下・転倒物",severity:"warn",title:"高所の物が落ちてくる危険",detail:"余震で棚や照明など高所の物が落ちる危険。固定と配置換えをどうする？"},
+  {cat:"安全",icon:"⚠️",tag:"安全",kw:"雷・突風",severity:"warn",title:"雷雨・突風の接近",detail:"雷雨と突風が接近。屋外作業や送迎の中断判断と安全確保をどうする？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"盗撮",severity:"danger",title:"盗撮の疑いがある人物",detail:"更衣・授乳スペース付近で盗撮の疑い。被害防止と証拠・通報の対応をどう進める？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"盗難",severity:"warn",title:"私物や物資の盗難",detail:"私物や配給物資の盗難が発生。保管方法と、疑心暗鬼を招かない対応をどうする？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"泥酔者",severity:"warn",title:"泥酔して騒ぐ人がいる",detail:"飲酒して騒ぐ人が周囲に迷惑。安全確保とルール、飲酒の扱いをどうする？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"詐欺・不審な勧誘",severity:"warn",title:"支援を装った詐欺・勧誘",detail:"支援や義援金を装った不審な勧誘が出没。注意喚起と本物の見分け方をどう周知する？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"不審者の侵入",severity:"danger",title:"部外者らしき不審者が出入り",detail:"関係者か不明な人物が出入り。受付・名札・巡回で安全をどう確保する？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"子どもの見守り",severity:"warn",title:"子どもだけで出歩く",detail:"子どもだけで館内外を出歩き、事故や犯罪の心配。見守りとルールをどうする？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"DV・つきまとい",severity:"danger",title:"元配偶者のつきまといの不安",detail:"DV避難中の人が居場所を知られる不安。名簿の非公開と安全確保をどうする？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"金銭トラブル",severity:"warn",title:"貸し借り・金銭のもめごと",detail:"避難者間の金銭の貸し借りでトラブル。関与の線引きと仲裁をどうする？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"夜間の見回り",severity:"info",title:"夜間の防犯体制がない",detail:"夜間の見回りがなく不安の声。当番・照明・巡回の体制をどう作る？"},
+  {cat:"防犯",icon:"🛡",tag:"防犯",kw:"車上荒らし",severity:"warn",title:"駐車場で車上荒らし",detail:"駐車場の車で車上荒らしが発生。駐車エリアの見回りと注意喚起をどうする？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"場所取り",severity:"warn",title:"場所取り・区画の争い",detail:"良い場所をめぐり住民同士でトラブル。区画のルールと公平な割り当てをどう決める？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"食事内容の不満",severity:"info",title:"食事の内容・量に不満",detail:"食事の内容や量に不満の声。限られた中での改善と説明をどうする？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"室温の対立",severity:"warn",title:"暑い・寒いで意見が対立",detail:"空調や窓の開閉で「暑い」「寒い」の対立。折り合いと配置の工夫をどうする？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"物資配分の不公平感",severity:"warn",title:"物資の配り方に不公平の声",detail:"物資の配り方に不公平だと不満。基準の明確化と透明性をどう確保する？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"生活音・騒音",severity:"info",title:"生活音・いびき・話し声",detail:"夜間の生活音やいびき、話し声で眠れないと苦情。時間帯ルールと配置をどうする？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"タイムスケジュール",severity:"info",title:"消灯・起床など時間のルール",detail:"消灯や起床、食事の時間のルールで意見が割れる。合意形成をどう図る？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"喫煙トラブル",severity:"warn",title:"喫煙場所をめぐる対立",detail:"喫煙場所やマナーをめぐる対立。分煙と受動喫煙防止をどう両立する？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"子どもの騒ぎ",severity:"info",title:"子どもの遊ぶ声・走り回り",detail:"子どもが走り回り騒ぐことへの苦情と、子どもの居場所の必要性をどう両立する？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"役割の不公平",severity:"warn",title:"手伝う人が偏っている",detail:"清掃や当番を手伝う人が偏り不満。役割分担と参加の promotion をどうする？"},
+  {cat:"トラブル",icon:"💢",tag:"トラブル",kw:"プライバシーの衝突",severity:"info",title:"間仕切りの有無でもめる",detail:"間仕切りを増やしたい人と圧迫感を嫌う人が対立。配置とルールをどう調整する？"}
 ];
 
 var GAS_OK = false;
@@ -297,19 +429,58 @@ function setConn(ok){
   document.getElementById('conntxt').textContent = ok ? '接続OK' : '未接続 / URL未設定';
 }
 
-// プリセット描画
-function buildPresets(){
-  var box=document.getElementById('presets');
-  box.innerHTML='';
+// カテゴリーの開閉状態
+var openCats = {};
+
+// プリセット描画（カテゴリー別アコーディオン＋検索）
+function renderPresets(){
+  var box=document.getElementById('catlist');
+  if(!box) return;
+  var q = (document.getElementById('cardsearch').value||'').trim().toLowerCase();
+
+  // カテゴリー順を維持しつつグループ化
+  var order=[]; var byCat={};
   PRESETS.forEach(function(p){
-    var d=document.createElement('div');
-    d.className='preset '+(p.severity==='danger'?'danger':p.severity==='warn'?'warn':'');
-    d.innerHTML='<span class="ptag">'+esc(p.tag)+'</span><span class="send">送信 ▶</span>'+
-      '<div class="pt">'+esc(p.title)+'</div><div class="pd">'+esc(p.detail)+'</div>';
-    d.onclick=function(){ send(p); };
-    box.appendChild(d);
+    if(!byCat[p.cat]){ byCat[p.cat]=[]; order.push({cat:p.cat, icon:p.icon}); }
+    byCat[p.cat].push(p);
   });
+
+  // 検索時のフィルタ
+  function match(p){
+    if(!q) return true;
+    return (p.title+' '+p.detail+' '+p.kw+' '+p.cat).toLowerCase().indexOf(q)>=0;
+  }
+
+  var html='';
+  var anyHit=false;
+  order.forEach(function(o){
+    var items=byCat[o.cat].filter(match);
+    if(!items.length) return;
+    anyHit=true;
+    // 検索中は自動展開、通常は開閉状態に従う
+    var open = q ? true : !!openCats[o.cat];
+    html+='<div class="catblock">'+
+      '<button class="cathead'+(open?' open':'')+'" onclick="toggleCat(\''+esc(o.cat).replace(/'/g,"\\'")+'\')">'+
+        '<span class="cicon">'+esc(o.icon)+'</span><span class="cname">'+esc(o.cat)+'</span>'+
+        '<span class="ccount">'+items.length+'</span><span class="carrow">'+(open?'▲':'▼')+'</span>'+
+      '</button>'+
+      '<div class="catbody" style="display:'+(open?'block':'none')+'">'+
+        items.map(function(p){
+          var cls=p.severity==='danger'?'danger':p.severity==='warn'?'warn':'';
+          return '<div class="preset '+cls+'" onclick="sendPreset('+PRESETS.indexOf(p)+')">'+
+            '<span class="ptag">'+esc(p.kw)+'</span><span class="send">送信 ▶</span>'+
+            '<div class="pt">'+esc(p.title)+'</div><div class="pd">'+esc(p.detail)+'</div></div>';
+        }).join('')+
+      '</div></div>';
+  });
+  if(!anyHit){ html='<div class="empty">「'+esc(q)+'」に一致するイベントは見つかりませんでした。</div>'; }
+  box.innerHTML=html;
 }
+function toggleCat(cat){ openCats[cat]=!openCats[cat]; renderPresets(); }
+function sendPreset(i){ var p=PRESETS[i]; if(p) send(p); }
+
+// 互換：初期化
+function buildPresets(){ renderPresets(); }
 
 // 深刻度トグルの見た目
 document.addEventListener('change', function(e){
