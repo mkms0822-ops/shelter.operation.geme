@@ -91,12 +91,15 @@
   #canvas{position:relative;width:1400px;height:1000px;margin:20px;background:var(--plan);
     background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
     background-size:40px 40px;border:2px solid var(--steel);border-radius:6px;box-shadow:var(--shadow)}
-  .zone{position:absolute;border:2px solid var(--steel);border-radius:8px;background:rgba(255,255,255,.72);backdrop-filter:blur(1px);overflow:hidden;min-width:80px;min-height:60px}
+  .zone{position:absolute;border:2px solid var(--steel);border-radius:8px;background:rgba(255,255,255,.72);backdrop-filter:blur(1px);overflow:hidden;min-width:60px;min-height:44px}
+  .zone .zhead .zname{outline:none;cursor:text;border-radius:4px;padding:0 3px}
+  .zone .zhead .zname:hover{background:rgba(255,255,255,.18)}
+  .zone .zhead .zname:focus{background:rgba(255,255,255,.28);box-shadow:0 0 0 2px rgba(255,255,255,.5)}
   .zone .zhead{background:var(--steel);color:#fff;font-size:24px;font-weight:800;padding:4px 8px;cursor:move;display:flex;align-items:center;gap:6px}
   .zone .zhead .zcap{margin-left:auto;font-size:10px;font-weight:700;background:rgba(255,255,255,.25);border-radius:8px;padding:0 7px}
   .zone .zbody{padding:6px;font-size:22px;color:#33404c;position:relative;height:calc(100% - 26px)}
   .zone textarea{width:100%;height:100%;border:0;background:transparent;resize:none;font-family:inherit;font-size:22px;color:#33404c;outline:none}
-  .zone .zresize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--steel) 50%);border-radius:0 0 6px 0}
+  .zone .zresize{position:absolute;right:0;bottom:0;width:24px;height:24px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--steel) 50%);border-radius:0 0 6px 0;touch-action:none}
   .zone .zdel{cursor:pointer;opacity:.7}
   .zone .zdel:hover{opacity:1}
 
@@ -797,8 +800,12 @@ function zoneEl(z){
   var col = zoneColor(z.color||'steel');
   var el=document.createElement('div'); el.className='zone'; el.style.left=z.x+'px'; el.style.top=z.y+'px'; el.style.width=z.w+'px'; el.style.height=z.h+'px'; el.dataset.id=z.id;
   el.style.borderColor = col;
-  el.innerHTML='<div class="zhead" style="background:'+col+'"><span>'+z.name+'</span>'+(z.cap?'<span class="zcap">定員'+z.cap+'</span>':'')+'<span class="zdel" onclick="delZone(event,\''+z.id+'\')">🗑</span></div>'+
-    '<div class="zbody"><textarea placeholder="メモ（役割・注意点など）" oninput="zoneNote(\''+z.id+'\',this.value)">'+(z.note||'')+'</textarea><div class="zresize" style="background:linear-gradient(135deg,transparent 50%,'+col+' 50%)"></div></div>';
+  el.innerHTML='<div class="zhead" style="background:'+col+'"><span class="zname" contenteditable="true" spellcheck="false" '+
+      'onfocus="zoneNameFocus(event)" onblur="zoneNameCommit(event,\''+z.id+'\')" '+
+      'onkeydown="zoneNameKey(event)" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">'+esc(z.name)+'</span>'+
+      (z.cap?'<span class="zcap">定員'+z.cap+'</span>':'')+
+      '<span class="zdel" onclick="delZone(event,\''+z.id+'\')">🗑</span></div>'+
+    '<div class="zbody"><textarea placeholder="メモ（役割・注意点など）" oninput="zoneNote(\''+z.id+'\',this.value)">'+esc(z.note||'')+'</textarea><div class="zresize" style="background:linear-gradient(135deg,transparent 50%,'+col+' 50%)"></div></div>';
   // 選択
   el.addEventListener('mousedown',function(e){ if(e.target.tagName!=='TEXTAREA'){ selectZone(z.id); } });
   // ヘッダドラッグで移動
@@ -806,10 +813,32 @@ function zoneEl(z){
   head.addEventListener('mousedown',function(e){ startDragZone(e,z,el); });
   // リサイズ
   el.querySelector('.zresize').addEventListener('mousedown',function(e){ startResizeZone(e,z,el); });
+  el.querySelector('.zresize').addEventListener('touchstart',function(e){ startResizeZone(e,z,el); },{passive:false});
   return el;
 }
 function delZone(e,id){ e.stopPropagation(); var f=curFloor(); f.zones=f.zones.filter(function(z){return z.id!==id;}); if(state.sel&&state.sel.id===id)state.sel=null; renderCanvas(); renderSel(); }
 function zoneNote(id,v){ var z=curFloor().zones.find(function(z){return z.id===id;}); if(z) z.note=v; }
+
+// 部屋名の直接編集
+function zoneNameFocus(e){
+  // フォーカス時に全選択して打ち替えしやすく
+  var el=e.target;
+  setTimeout(function(){
+    try{ var r=document.createRange(); r.selectNodeContents(el); var s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }catch(_){}
+  },0);
+}
+function zoneNameKey(e){
+  // Enterで確定（改行させない）
+  if(e.key==='Enter'){ e.preventDefault(); e.target.blur(); }
+}
+function zoneNameCommit(e,id){
+  var name=(e.target.textContent||'').replace(/\s+/g,' ').trim();
+  if(!name) name='新しい部屋';
+  var z=curFloor().zones.find(function(z){return z.id===id;});
+  if(z){ z.name=name; }
+  e.target.textContent=name;
+  renderSel(); // サイドパネルの名前欄も同期
+}
 
 function startDragZone(e,z,el){
   e.preventDefault();
@@ -820,10 +849,21 @@ function startDragZone(e,z,el){
 }
 function startResizeZone(e,z,el){
   e.preventDefault(); e.stopPropagation();
-  var sx=e.clientX, sy=e.clientY, ow=z.w, oh=z.h;
-  function mv(ev){ z.w=Math.max(90,ow+ev.clientX-sx); z.h=Math.max(70,oh+ev.clientY-sy); el.style.width=z.w+'px'; el.style.height=z.h+'px'; }
-  function up(){ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
+  var pt=e.touches?e.touches[0]:e;
+  var sx=pt.clientX, sy=pt.clientY, ow=z.w, oh=z.h;
+  function mv(ev){
+    var p=ev.touches?ev.touches[0]:ev;
+    z.w=Math.max(60, ow + p.clientX - sx);
+    z.h=Math.max(44, oh + p.clientY - sy);
+    el.style.width=z.w+'px'; el.style.height=z.h+'px';
+    if(ev.cancelable) ev.preventDefault();
+  }
+  function up(){
+    document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up);
+    document.removeEventListener('touchmove',mv); document.removeEventListener('touchend',up);
+  }
   document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+  document.addEventListener('touchmove',mv,{passive:false}); document.addEventListener('touchend',up);
 }
 
 // アイテム
