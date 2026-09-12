@@ -66,6 +66,18 @@
   .evitem .et{font-size:15.5px;font-weight:800;color:var(--ink);line-height:1.4}
   .evitem .ed{font-size:13px;color:#33404c;line-height:1.65;margin-top:4px}
   .empty{color:var(--sub);font-size:12.5px;text-align:center;padding:26px 10px;line-height:1.8}
+  /* 状況カード */
+  .sitcard{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin-bottom:14px}
+  .sitcard .sc-item{font-size:14px;font-weight:800;color:var(--ink)}
+  .sitcard .sc-clock{font-size:20px;font-weight:900;color:var(--navy);font-variant-numeric:tabular-nums;margin-left:auto}
+  .sitcard .run{font-size:11px;font-weight:800;color:#2e7d5b}
+  .sitcard .stop{font-size:11px;font-weight:800;color:var(--sub)}
+  .sitrow{display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
+  .sitrow-g{font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;min-width:110px}
+  .sitrow .dot{width:11px;height:11px;border-radius:50%}
+  .dot-green{background:#3f9e63} .dot-pink{background:#c25a86} .dot-orange{background:#c9832f} .dot-blue{background:#3f77b3} .dot-all{background:#7a8a97}
+  .sitrow .sitcard{margin-bottom:0;flex:1}
+  body.fs-lg .sitcard .sc-clock{font-size:25px} body.fs-lg .sitcard .sc-item{font-size:17px}
   body.fs-lg .et{font-size:19px} body.fs-lg .ed{font-size:16px} body.fs-lg .memo textarea{font-size:17px}
   body.fs-sm .et{font-size:14px} body.fs-sm .ed{font-size:11.5px} body.fs-sm .memo textarea{font-size:12.5px}
 
@@ -144,6 +156,7 @@ var ALL = 'all';
 var groups = [];          // [{name,color}]
 var eventsAll = [];       // 全イベント
 var memos = {};           // {group: {text, updated}}
+var situations = {};      // {group: {month,temp,humid,startMin,speed,startedAt,running,baseElapsedSec}}
 var curTab = ALL;         // 選択中タブ（'all' or グループ名）
 var seenCount = {};       // タブごとに既読件数（新着バッジ用）
 var editing = false;      // メモ編集中はメモ欄を上書きしない
@@ -206,6 +219,7 @@ function handle(res){
   setConn(true);
   groups = (res && res.groups) ? res.groups : groups;
   eventsAll = (res && res.events) ? res.events : [];
+  situations = (res && res.situations) ? res.situations : {};
   // メモ編集中はサーバーのメモで上書きしない（自分の入力を守る）
   if(!editing){ memos = (res && res.memos) ? res.memos : {}; }
   dbg('接続OK / イベント'+eventsAll.length+'件 / '+ (groups.length) +'グループ');
@@ -273,9 +287,46 @@ function renderEventsOnly(){
   if(holder){ holder.innerHTML=eventsListHtml(); }
 }
 
+function seasonOf(m){
+  if(m>=3&&m<=5) return '🌸 春';
+  if(m>=6&&m<=8) return '☀️ 夏';
+  if(m>=9&&m<=11) return '🍂 秋';
+  return '❄️ 冬';
+}
+// 状況（月・気温・湿度・時刻）のHTMLを作る。runningなら現在時刻を算出。
+function situationHtml(group){
+  var s = situations[group];
+  if(!s) return '';
+  var elapsed = s.baseElapsedSec||0;
+  if(s.running && s.startedAt){ elapsed += (Date.now()-s.startedAt)/1000 * (s.speed||1); }
+  var totalMin = (s.startMin||0) + Math.floor(elapsed/60);
+  var day = 1 + Math.floor(totalMin/(24*60));
+  var mn = ((totalMin % (24*60)) + (24*60)) % (24*60);
+  var clock = ('0'+Math.floor(mn/60)).slice(-2)+':'+('0'+(mn%60)).slice(-2);
+  var runDot = s.running ? '<span class="run">● 進行中</span>' : '<span class="stop">■ 停止</span>';
+  return '<div class="sitcard">'+
+    '<div class="sc-item">'+seasonOf(s.month)+'（'+s.month+'月）</div>'+
+    '<div class="sc-item">🌡 '+s.temp+'℃</div>'+
+    '<div class="sc-item">💧 '+s.humid+'%</div>'+
+    '<div class="sc-clock" data-group="'+esc(group)+'">'+day+'日目 '+clock+'</div>'+
+    runDot+'</div>';
+}
+// 全体タブ用：全グループの状況を並べる
+function allSituationsHtml(){
+  var keys = Object.keys(situations);
+  if(!keys.length) return '';
+  var rows = groups.map(function(g){
+    if(!situations[g.name]) return '';
+    return '<div class="sitrow"><span class="sitrow-g"><span class="dot dot-'+colorClass(g.color)+'"></span>'+esc(g.name)+'</span>'+situationHtml(g.name)+'</div>';
+  }).filter(Boolean).join('');
+  return rows ? '<div class="sec-h">🕒 各グループの状況</div>'+rows : '';
+}
+
 function renderBody(){
   var main=document.getElementById('main');
   var tabLabel = curTab===ALL ? '全体' : curTab;
+
+  var sitHtml = curTab===ALL ? allSituationsHtml() : situationHtml(curTab);
 
   var memoHtml='';
   if(curTab!==ALL){
@@ -288,7 +339,22 @@ function renderBody(){
       '<span class="mstat" id="memoStat">'+(m.updated?('最終更新 '+esc(m.updated)):'')+'</span></div></div>';
   }
 
-  main.innerHTML = memoHtml + '<div id="evholder">'+eventsListHtml()+'</div>';
+  main.innerHTML = sitHtml + memoHtml + '<div id="evholder">'+eventsListHtml()+'</div>';
+}
+
+// 進行中の時計を毎秒更新（表示だけ差し替え）
+function tickBoardClocks(){
+  var els=document.querySelectorAll('.sc-clock');
+  for(var i=0;i<els.length;i++){
+    var g=els[i].getAttribute('data-group');
+    var s=situations[g];
+    if(!s || !s.running || !s.startedAt) continue;
+    var elapsed=(s.baseElapsedSec||0)+(Date.now()-s.startedAt)/1000*(s.speed||1);
+    var totalMin=(s.startMin||0)+Math.floor(elapsed/60);
+    var day=1+Math.floor(totalMin/(24*60));
+    var mn=((totalMin%(24*60))+(24*60))%(24*60);
+    els[i].textContent = day+'日目 '+('0'+Math.floor(mn/60)).slice(-2)+':'+('0'+(mn%60)).slice(-2);
+  }
 }
 
 // メモ入力開始（ポーリングでの上書きを止める）
@@ -317,6 +383,7 @@ function saveMemo(){
 // ===== 起動 =====
 poll();
 setInterval(poll, POLL_MS);
+setInterval(tickBoardClocks, 1000);  // 進行中の時計を毎秒更新
 </script>
 </body>
 </html>

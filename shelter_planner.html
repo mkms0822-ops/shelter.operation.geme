@@ -446,14 +446,40 @@ function setTheme(th){
 function toggleSettings(){ document.getElementById('setpanel').classList.toggle('show'); }
 
 // ===================================================================
-// 状況設定バー（月・気温・湿度・時刻の自動経過）
+// 状況設定バー（月・気温・湿度・時刻の自動経過）／グループ共有（方式A）
+// モデル：baseElapsedSec = 停止時点までの累積ゲーム内秒。
+//         running中は startedAt(実時刻ms)からの経過×speedを足して現在値を算出。
 // ===================================================================
-var SIT = { month:4, temp:20, humid:50, startMin:8*60, speed:60, elapsedSec:0, running:false };
+var SIT = { month:4, temp:20, humid:50, startMin:8*60, speed:60, baseElapsedSec:0, startedAt:0, running:false };
 try { var _s=JSON.parse(localStorage.getItem('sos_situation')||'null'); if(_s){ SIT.month=_s.month||4; SIT.temp=(_s.temp!=null?_s.temp:20); SIT.humid=(_s.humid!=null?_s.humid:50); SIT.startMin=(_s.startMin!=null?_s.startMin:8*60); SIT.speed=_s.speed||60; } } catch(e){}
 var sitTimer=null;
 
-function saveSit(){
+function saveSitLocal(){
   try{ localStorage.setItem('sos_situation', JSON.stringify({month:SIT.month,temp:SIT.temp,humid:SIT.humid,startMin:SIT.startMin,speed:SIT.speed})); }catch(e){}
+}
+// 現在の累積ゲーム内秒（running中は実時間経過を加算）
+function currentElapsedSec(){
+  var e = SIT.baseElapsedSec;
+  if(SIT.running && SIT.startedAt){ e += (Date.now()-SIT.startedAt)/1000 * SIT.speed; }
+  return e;
+}
+// GASへ状況を保存（グループ共有）。startedAtは実時刻ms、baseElapsedSecはstartMinに0点を置くため startMin*60 + elapsed で表現。
+function saveSitToGAS(){
+  var mg = (window.MY && MY.group) ? MY.group : null;
+  if(!mg){ return; } // グループ未参加なら共有しない
+  // 掲示板が計算しやすいよう、startMinと「稼働開始実時刻」「開始時点の累積秒」を送る
+  var body = {
+    action:'saveSituation', group:mg,
+    month:SIT.month, temp:SIT.temp, humid:SIT.humid,
+    startMin:SIT.startMin, speed:SIT.speed,
+    startedAt: SIT.running ? SIT.startedAt : 0,
+    running: SIT.running
+  };
+  // baseElapsedSec を startMin に織り込むのではなく、別途送るためグローバルに付加
+  body.baseElapsedSec = Math.floor(SIT.baseElapsedSec);
+  try{
+    fetch(CARD_GAS_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body)});
+  }catch(e){}
 }
 function pad2(n){ return (n<10?'0':'')+n; }
 
@@ -482,53 +508,59 @@ function onSitChange(){
   SIT.month=parseInt(document.getElementById('sit-month').value,10);
   SIT.temp=parseInt(document.getElementById('sit-temp').value,10);
   SIT.humid=parseInt(document.getElementById('sit-humid').value,10);
-  saveSit();
+  saveSitLocal(); saveSitToGAS();
 }
 function onStartChange(){
   SIT.startMin=parseInt(document.getElementById('sit-start').value,10);
-  SIT.elapsedSec=0; // 開始時刻を変えたら経過をリセット
-  saveSit(); renderClock();
+  // 開始時刻を変えたら経過をリセット
+  SIT.baseElapsedSec=0; SIT.startedAt = SIT.running ? Date.now() : 0;
+  saveSitLocal(); renderClock(); saveSitToGAS();
 }
 function onSpeedChange(){
+  // 速度変更時は、それまでの経過を確定してから新速度に切替
+  if(SIT.running){ SIT.baseElapsedSec = currentElapsedSec(); SIT.startedAt = Date.now(); }
   SIT.speed=parseInt(document.getElementById('sit-speed').value,10);
-  saveSit();
+  saveSitLocal(); saveSitToGAS();
 }
 
-// 現在のゲーム内時刻を計算して表示
+// 現在のゲーム内時刻を表示
 function renderClock(){
-  var totalMin = SIT.startMin + Math.floor(SIT.elapsedSec/60);
+  var totalMin = SIT.startMin + Math.floor(currentElapsedSec()/60);
   var day = 1 + Math.floor(totalMin/(24*60));
   var mn = ((totalMin % (24*60)) + (24*60)) % (24*60);
   document.getElementById('sit-clock').textContent = pad2(Math.floor(mn/60))+':'+pad2(mn%60);
   document.getElementById('sit-day').textContent = day+'日目';
 }
 
-function tickClock(){
-  // 実時間1秒ごとに、speed秒だけゲーム内時間を進める
-  SIT.elapsedSec += SIT.speed;
-  renderClock();
-}
+function tickClock(){ renderClock(); }  // 表示更新のみ（経過はstartedAtから算出）
+
 function toggleClock(){
   var btn=document.getElementById('sit-play');
   if(SIT.running){
-    SIT.running=false; if(sitTimer){ clearInterval(sitTimer); sitTimer=null; }
+    // 停止：経過を確定
+    SIT.baseElapsedSec = currentElapsedSec();
+    SIT.running=false; SIT.startedAt=0;
+    if(sitTimer){ clearInterval(sitTimer); sitTimer=null; }
     btn.textContent='▶ 開始';
   } else {
-    SIT.running=true;
+    // 開始
+    SIT.running=true; SIT.startedAt=Date.now();
     btn.textContent='⏸ 一時停止';
     sitTimer=setInterval(tickClock, 1000);
   }
+  saveSitLocal(); renderClock(); saveSitToGAS();
 }
 function resetClock(){
-  SIT.running=false; if(sitTimer){ clearInterval(sitTimer); sitTimer=null; }
-  SIT.elapsedSec=0;
+  SIT.running=false; SIT.startedAt=0; SIT.baseElapsedSec=0;
+  if(sitTimer){ clearInterval(sitTimer); sitTimer=null; }
   document.getElementById('sit-play').textContent='▶ 開始';
-  renderClock();
+  renderClock(); saveSitToGAS();
 }
 
 // 起動
 buildSitOptions();
 renderClock();
+setInterval(function(){ if(SIT.running) renderClock(); }, 1000); // 保険で毎秒更新
 
 (function initUI(){
   var f='md', t='';
