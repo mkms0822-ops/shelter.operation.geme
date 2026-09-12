@@ -8,6 +8,7 @@
   :root{
     --ink:#1b2733; --sub:#63727f; --line:#d3dde5; --bg:#eaeef1; --panel:#ffffff;
     --navy:#123a5e; --steel:#3f6f8f; --plan:#eef4f8; --grid:#d7e3ec;
+    --info:#3f8ad1; --warn:#c98a1e; --danger:#d24b3e;
     --general:#3f8ad1; --care:#8a5cc4; --med:#d24b3e; --pet:#c98a1e; --stock:#3f9a6a;
     --toilet:#5b8fb0; --reception:#c05a2a; --area:#7a8a97;
     --shadow:0 2px 10px rgba(20,45,70,.10);
@@ -123,6 +124,33 @@
   .howto-foot{display:flex;align-items:center;gap:12px;padding:14px 20px 20px;border-top:1px solid var(--line);flex-wrap:wrap}
   .howto-skip{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;cursor:pointer}
   .howto-close{margin-left:auto;background:var(--navy);color:#fff;border:0;border-radius:10px;padding:11px 22px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
+
+  /* ===== ポップアップ通知（player.htmlより移植） ===== */
+  #overlay{position:fixed;inset:0;background:rgba(10,25,40,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+  #overlay.show{display:flex;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .popup{background:#fff;width:100%;max-width:480px;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4);animation:pop .35s cubic-bezier(.2,1.1,.4,1)}
+  @keyframes pop{0%{transform:scale(.82) translateY(20px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
+  .popup .band{padding:16px 22px;color:#fff;display:flex;align-items:center;gap:12px}
+  .popup .band .bic{font-size:30px;line-height:1}
+  .popup .band .btag{font-size:11px;font-weight:800;letter-spacing:.05em;opacity:.92}
+  .popup .band .bsev{font-size:15px;font-weight:900}
+  .popup.info  .band{background:linear-gradient(135deg,var(--info),#2f6fa8)}
+  .popup.warn  .band{background:linear-gradient(135deg,var(--warn),#a8720f)}
+  .popup.danger .band{background:linear-gradient(135deg,var(--danger),#a5352a)}
+  .popup.danger{animation:pop .35s cubic-bezier(.2,1.1,.4,1), shake .5s .35s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+  .popup .pbody{padding:20px 22px 8px}
+  .popup .ptitle{font-size:20px;font-weight:900;color:var(--ink);line-height:1.35;margin-bottom:10px}
+  .popup .pdetail{font-size:14px;color:#33404c;line-height:1.7}
+  .popup .pask{font-size:12.5px;color:var(--sub);background:#f4f8fb;border-radius:10px;padding:11px 13px;line-height:1.6;margin-top:14px}
+  .popup .pfoot{padding:14px 22px 20px;display:flex;gap:10px;align-items:center}
+  .popup .ptime{font-size:11px;color:var(--sub);font-weight:700}
+  .popup .queue{font-size:11px;color:var(--sub);font-weight:700}
+  .popup .sp{flex:1}
+  .popup .ok{background:var(--navy);color:#fff;border:0;border-radius:10px;padding:12px 26px;font-weight:800;font-size:14.5px;cursor:pointer;font-family:inherit}
+  .popup .ok:hover{background:#0d2b47}
+
 </style>
 </head>
 <body>
@@ -488,6 +516,141 @@ function closeHowto(){
 }
 
 init();
+
+// ===================================================================
+// イベント通知ポップアップ（player.html より移植・JSONP方式）
+// facilitator が送信したイベントを定期取得し、この画面にもポップアップ表示する
+// ===================================================================
+(function(){
+  var NOTIFY_POLL_MS = 4000;      // 取得間隔
+  var nQueue = [];                // 表示待ち
+  var nShowing = false;
+  var nQueued = {};               // 取得済みid
+  var nCurrentId = null;          // 表示中id
+  var nJsonpBusy = false;
+  var nJsonpSeq = 0;
+
+  // 既読ID（レイアウト画面専用キー。player とは別管理）
+  var NSEEN_KEY = 'planner_seen_id';
+  var nLastId = 0;
+  try { nLastId = parseInt(localStorage.getItem(NSEEN_KEY) || '0', 10) || 0; } catch(e){ nLastId = 0; }
+  function nSaveSeen(id){ try{ localStorage.setItem(NSEEN_KEY, String(id)); }catch(e){} }
+
+  var NSEV = {
+    info:   {ic:'ℹ️', label:'お知らせ'},
+    warn:   {ic:'⚠️', label:'注意が必要'},
+    danger: {ic:'🚨', label:'緊急事態'}
+  };
+
+  function nBeep(){
+    try{
+      var ctx=new (window.AudioContext||window.webkitAudioContext)();
+      var o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type='sine'; o.frequency.value=880;
+      g.gain.setValueAtTime(.0001,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(.25,ctx.currentTime+.02);
+      g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.5);
+      o.start(); o.stop(ctx.currentTime+.5);
+    }catch(e){}
+  }
+
+  function nHandle(res){
+    var evs = (res && res.events) ? res.events : (Array.isArray(res) ? res : []);
+    if(!evs.length) return;
+    evs.forEach(function(ev){
+      if(!ev || ev.id==null) return;
+      if(ev.id<=nLastId) return;
+      if(nQueued[ev.id]) return;
+      nQueued[ev.id]=true;
+      nQueue.push(ev);
+    });
+    nPump();
+  }
+
+  function nPoll(){
+    if(!CARD_GAS_URL || CARD_GAS_URL.indexOf('script.google.com')<0) return;
+    if(nJsonpBusy) return;
+    nJsonpBusy = true;
+    var cbName = 'notifyCb_' + (++nJsonpSeq) + '_' + Date.now();
+    var script = document.createElement('script');
+    var done = false;
+    function cleanup(){
+      if(done) return; done=true; nJsonpBusy=false;
+      try{ delete window[cbName]; }catch(e){ window[cbName]=undefined; }
+      if(script.parentNode) script.parentNode.removeChild(script);
+      clearTimeout(timer);
+    }
+    window[cbName] = function(res){ try{ nHandle(res); }catch(e){} cleanup(); };
+    var timer = setTimeout(cleanup, NOTIFY_POLL_MS + 6000);
+    script.onerror = cleanup;
+    script.src = CARD_GAS_URL + '?action=poll&since=' + nLastId + '&callback=' + cbName;
+    document.head.appendChild(script);
+  }
+
+  function nPump(){
+    if(nShowing || !nQueue.length) return;
+    nShow(nQueue.shift());
+  }
+
+  function nShow(ev){
+    nShowing = true;
+    nCurrentId = ev.id;
+    var sev = NSEV[ev.severity] || NSEV.info;
+    var pop = document.getElementById('popup');
+    pop.className = 'popup ' + (ev.severity||'info');
+    document.getElementById('p-ic').textContent = sev.ic;
+    document.getElementById('p-tag').textContent = ev.tag || '状況';
+    document.getElementById('p-sev').textContent = sev.label;
+    document.getElementById('p-title').textContent = ev.title || ev.t || '';
+    document.getElementById('p-detail').textContent = ev.detail || ev.d || '';
+    document.getElementById('p-time').textContent = ev.time ? ('発生 '+ev.time) : '';
+    document.getElementById('p-queue').textContent = nQueue.length ? ('待機 '+nQueue.length+'件') : '';
+    document.getElementById('overlay').classList.add('show');
+    nBeep();
+  }
+
+  // closePopup はグローバルに（ポップアップの「対応する」ボタンから呼ばれる）
+  window.closePopup = function(){
+    if(nCurrentId && nCurrentId>nLastId){ nLastId=nCurrentId; nSaveSeen(nLastId); }
+    nCurrentId = null;
+    document.getElementById('overlay').classList.remove('show');
+    nShowing = false;
+    setTimeout(nPump, 350);
+  };
+
+  // 起動
+  nPoll();
+  setInterval(nPoll, NOTIFY_POLL_MS);
+})();
+
 </script>
+
+<!-- ===== イベント通知ポップアップ ===== -->
+<div id="overlay">
+  <div class="popup" id="popup">
+    <div class="band">
+      <span class="bic" id="p-ic">⚠️</span>
+      <div>
+        <div class="btag" id="p-tag">状況</div>
+        <div class="bsev" id="p-sev">イベント発生</div>
+      </div>
+    </div>
+    <div class="pbody">
+      <div class="ptitle" id="p-title"></div>
+      <div class="pdetail" id="p-detail"></div>
+      <div class="pask">この状況にどう対応しますか？ 図面の配置を動かし、部屋のメモに方針を書きながらチームで話し合いましょう。正解は一つではありません。</div>
+    </div>
+    <div class="pfoot">
+      <span class="ptime" id="p-time"></span>
+      <span class="sp"></span>
+      <span class="queue" id="p-queue"></span>
+      <button class="ok" onclick="closePopup()">対応する ✓</button>
+    </div>
+  </div>
+</div>
+
+<audio id="ding" preload="auto"></audio>
+
 </body>
 </html>
