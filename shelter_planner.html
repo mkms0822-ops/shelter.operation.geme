@@ -44,6 +44,7 @@
   header button:hover{background:rgba(255,255,255,.24)}
   header button.primary{background:#2e7d5b}
   header button.primary:hover{background:#379268}
+  header button.big{font-size:25px;padding:7px 16px}
 
   /* フロアタブ */
   .floortabs{display:flex;align-items:center;gap:6px;background:#dbe4ea;padding:6px 12px;flex:none;border-bottom:1px solid var(--line);overflow-x:auto}
@@ -314,7 +315,7 @@
     <span class="sp"></span>
     <span class="gbadge" id="gbadge" style="display:none"></span>
     <button class="hbtn" id="setbtn" onclick="toggleSettings()" title="表示設定">⚙️</button>
-    <button onclick="addZone()">＋ 部屋を追加</button>
+    <button class="big" onclick="addZone()">＋ 部屋を追加</button>
     <button onclick="saveLayout()" class="primary">💾 保存</button>
     <button onclick="loadLayout()">📂 開く</button>
     <button onclick="clearFloor()">🗑 クリア</button>
