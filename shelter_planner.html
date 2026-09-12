@@ -19,6 +19,18 @@
   body.theme-blue   { --bg:#e5eef8; }
   /* 文字サイズ：サイドパネル・ポップアップ等に効く基準サイズ */
   body.fs-sm{ font-size:14px; } body.fs-md{ font-size:16px; } body.fs-lg{ font-size:18.5px; }
+  /* 読む部分を文字サイズ設定に連動 */
+  body.fs-sm .ptitle{font-size:17px}    body.fs-lg .ptitle{font-size:25px}
+  body.fs-sm .pdetail{font-size:12.5px} body.fs-lg .pdetail{font-size:18px}
+  body.fs-sm .pask{font-size:11px}      body.fs-lg .pask{font-size:15px}
+  body.fs-sm .band .bsev{font-size:13px} body.fs-lg .band .bsev{font-size:19px}
+  body.fs-sm .popup .ok{font-size:13px}  body.fs-lg .popup .ok{font-size:18px}
+  body.fs-sm .logitem .lt{font-size:12px} body.fs-lg .logitem .lt{font-size:16px}
+  body.fs-sm .logitem .ld{font-size:10.5px} body.fs-lg .logitem .ld{font-size:14px}
+  body.fs-sm .cardbox .ct{font-size:12px} body.fs-lg .cardbox .ct{font-size:16px}
+  body.fs-sm .cardbox .cd{font-size:11.5px} body.fs-lg .cardbox .cd{font-size:15px}
+  body.fs-sm .muted{font-size:10.5px}   body.fs-lg .muted{font-size:14px}
+  body.fs-sm .side-btn{font-size:12px}  body.fs-lg .side-btn{font-size:16px}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg);overflow:hidden}
   #app{display:flex;flex-direction:column;height:100vh;height:100dvh}

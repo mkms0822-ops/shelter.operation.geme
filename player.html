@@ -20,6 +20,18 @@
   body.fs-sm { font-size:15px; }
   body.fs-md { font-size:16.5px; }
   body.fs-lg { font-size:20px; }
+  /* 主要テキストを文字サイズ設定に連動させる（大/小で読みやすく） */
+  body.fs-sm #wait h2{font-size:16px}   body.fs-lg #wait h2{font-size:24px}
+  body.fs-sm #wait p{font-size:12px}    body.fs-lg #wait p{font-size:17px}
+  body.fs-sm .ptitle{font-size:17px}    body.fs-lg .ptitle{font-size:26px}
+  body.fs-sm .pdetail{font-size:12.5px} body.fs-lg .pdetail{font-size:18px}
+  body.fs-sm .pask{font-size:11px}      body.fs-lg .pask{font-size:15px}
+  body.fs-sm .band .bsev{font-size:13px} body.fs-lg .band .bsev{font-size:19px}
+  body.fs-sm .band .btag{font-size:10px} body.fs-lg .band .btag{font-size:13px}
+  body.fs-sm .popup .ok{font-size:13px}  body.fs-lg .popup .ok{font-size:18px}
+  body.fs-sm .hitem .ht{font-size:13px} body.fs-lg .hitem .ht{font-size:18px}
+  body.fs-sm .hitem .hd{font-size:11px} body.fs-lg .hitem .hd{font-size:15px}
+  body.fs-lg header h1{font-size:19px}  body.fs-sm header h1{font-size:14px}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg)}
   #app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
