@@ -17,6 +17,11 @@
   body.theme-pink   { --bg:#fbe9f0; }
   body.theme-orange { --bg:#fdeede; }
   body.theme-blue   { --bg:#e5eef8; }
+  /* 季節ベース色（月に連動・すべて淡い色合い） */
+  body.season-winter { --bg:#e3f0f7; }  /* 12・1・2月：淡い水色 */
+  body.season-spring { --bg:#e7f5e9; }  /* 3・4・5月：淡い緑 */
+  body.season-summer { --bg:#fdf0e0; }  /* 6・7・8月：淡いオレンジ */
+  body.season-autumn { --bg:#fbeae4; }  /* 9・10・11月：淡い朱色 */
   /* 文字サイズ：サイドパネル・ポップアップ等に効く基準サイズ */
   body.fs-sm{ font-size:14px; } body.fs-md{ font-size:16px; } body.fs-lg{ font-size:18.5px; }
   /* 読む部分を文字サイズ設定に連動 */
@@ -504,10 +509,25 @@ function buildSitOptions(){
   document.getElementById('sit-speed').value=String(SIT.speed);
 }
 
+// 月から季節ベース色を適用
+function applySeasonTheme(){
+  var m = SIT.month;
+  var cls = 'season-winter';
+  if(m>=3&&m<=5) cls='season-spring';
+  else if(m>=6&&m<=8) cls='season-summer';
+  else if(m>=9&&m<=11) cls='season-autumn';
+  else cls='season-winter'; // 12,1,2
+  document.body.classList.remove('season-winter','season-spring','season-summer','season-autumn');
+  // 月による季節色を優先するため、手動の背景テーマは解除
+  document.body.classList.remove('theme-green','theme-pink','theme-orange','theme-blue');
+  document.body.classList.add(cls);
+}
+
 function onSitChange(){
   SIT.month=parseInt(document.getElementById('sit-month').value,10);
   SIT.temp=parseInt(document.getElementById('sit-temp').value,10);
   SIT.humid=parseInt(document.getElementById('sit-humid').value,10);
+  applySeasonTheme();
   saveSitLocal(); saveSitToGAS();
 }
 function onStartChange(){
@@ -559,6 +579,7 @@ function resetClock(){
 
 // 起動
 buildSitOptions();
+applySeasonTheme();
 renderClock();
 setInterval(function(){ if(SIT.running) renderClock(); }, 1000); // 保険で毎秒更新
 
