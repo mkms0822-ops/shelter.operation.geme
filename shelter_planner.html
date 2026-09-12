@@ -13,6 +13,12 @@
     --toilet:#5b8fb0; --reception:#c05a2a; --area:#7a8a97;
     --shadow:0 2px 10px rgba(20,45,70,.10);
   }
+  body.theme-green  { --bg:#e6f4ea; }
+  body.theme-pink   { --bg:#fbe9f0; }
+  body.theme-orange { --bg:#fdeede; }
+  body.theme-blue   { --bg:#e5eef8; }
+  /* 文字サイズ：サイドパネル・ポップアップ等に効く基準サイズ */
+  body.fs-sm{ font-size:14px; } body.fs-md{ font-size:16px; } body.fs-lg{ font-size:18.5px; }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);background:var(--bg);overflow:hidden}
   #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
@@ -162,9 +168,97 @@
   .popup .ok{background:var(--navy);color:#fff;border:0;border-radius:10px;padding:12px 26px;font-weight:800;font-size:14.5px;cursor:pointer;font-family:inherit}
   .popup .ok:hover{background:#0d2b47}
 
+
+  /* ===== ヘッダー追加要素 ===== */
+  .hbtn{background:rgba(255,255,255,.14);border:0;color:#fff;font-size:15px;border-radius:20px;width:32px;height:32px;cursor:pointer;flex:none}
+  .hbtn:hover{background:rgba(255,255,255,.26)}
+  .gbadge{font-size:11.5px;font-weight:800;color:#fff;border-radius:20px;padding:4px 11px;background:var(--steel)}
+  .gbadge.g-green{background:#3f9e63} .gbadge.g-pink{background:#c25a86}
+  .gbadge.g-orange{background:#c9832f} .gbadge.g-blue{background:#3f77b3}
+
+  /* ===== 参加登録ゲート ===== */
+  #joingate{position:fixed;inset:0;background:linear-gradient(160deg,#123a5e,#0d2b47);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px;overflow:auto}
+  #joingate.hide{display:none}
+  .jg-box{background:#fff;width:100%;max-width:400px;border-radius:20px;padding:26px 24px;box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center}
+  .jg-logo{font-size:44px}
+  .jg-box h2{font-size:20px;color:var(--navy);font-weight:900;margin:6px 0}
+  .jg-lead{font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:18px}
+  .jg-label{display:block;text-align:left;font-size:12px;font-weight:800;color:var(--sub);margin:12px 0 6px}
+  .jg-input{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:13px 14px;font-size:16px;font-family:inherit;color:var(--ink)}
+  .jg-input:focus{outline:none;border-color:var(--steel)}
+  .jg-groups{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
+  .jg-loading{grid-column:1/-1;color:var(--sub);font-size:12px;padding:12px}
+  .jg-g{border:2px solid var(--line);background:#fff;border-radius:12px;padding:12px 10px;font-size:14px;font-weight:800;color:var(--ink);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;justify-content:center}
+  .jg-g .dot{width:14px;height:14px;border-radius:50%;flex:none}
+  .jg-g.sel{border-color:var(--navy);background:#f2f7fb;box-shadow:0 0 0 2px rgba(18,58,94,.12)}
+  .dot-green{background:#3f9e63} .dot-pink{background:#c25a86} .dot-orange{background:#c9832f} .dot-blue{background:#3f77b3}
+  .jg-err{color:var(--danger);font-size:12.5px;font-weight:700;min-height:18px;margin:10px 0 2px}
+  .jg-go{width:100%;background:var(--navy);color:#fff;border:0;border-radius:12px;padding:14px;font-size:15.5px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px}
+  .jg-go:hover{background:#0d2b47}
+
+  /* ===== 表示設定パネル ===== */
+  #setpanel{position:fixed;top:52px;right:12px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 34px rgba(0,0,0,.22);padding:14px 16px;z-index:250;display:none;min-width:250px}
+  #setpanel.show{display:block}
+  .set-row{display:flex;align-items:center;gap:10px;margin:10px 0}
+  .set-row:first-child{margin-top:2px}
+  .set-t{font-size:12px;font-weight:800;color:var(--sub);width:66px;flex:none}
+  .seg{display:flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{background:#fff;border:0;padding:8px 15px;font-size:13.5px;font-weight:800;color:var(--sub);cursor:pointer;font-family:inherit}
+  .seg button.on{background:var(--navy);color:#fff}
+  .swatches{display:flex;gap:7px;align-items:center}
+  .sw{width:28px;height:28px;border-radius:50%;border:2px solid rgba(0,0,0,.12);cursor:pointer;font-size:13px;color:var(--sub);display:flex;align-items:center;justify-content:center}
+  .sw.on{border-color:var(--navy);box-shadow:0 0 0 2px rgba(18,58,94,.2)}
+  .sw-green{background:#e6f4ea} .sw-pink{background:#fbe9f0} .sw-orange{background:#fdeede} .sw-blue{background:#e5eef8} .sw-none{background:#fff}
+  .set-leave{background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit}
+  .set-leave:hover{background:#f4f8fb}
+
 </style>
 </head>
 <body>
+
+<!-- ===== 参加登録ゲート ===== -->
+<div id="joingate">
+  <div class="jg-box">
+    <div class="jg-logo">🗺️</div>
+    <h2>避難所レイアウト</h2>
+    <p class="jg-lead">お名前を入力し、参加するグループを選んでください。</p>
+    <label class="jg-label">お名前（ニックネーム可）</label>
+    <input type="text" id="jg-name" class="jg-input" placeholder="例：山田" maxlength="20" autocomplete="off">
+    <label class="jg-label">グループ</label>
+    <div id="jg-groups" class="jg-groups"><div class="jg-loading">グループを読み込み中…</div></div>
+    <div class="jg-err" id="jg-err"></div>
+    <button class="jg-go" id="jg-go" onclick="doJoin()">この内容で参加する ✓</button>
+  </div>
+</div>
+
+<!-- ===== 表示設定パネル ===== -->
+<div id="setpanel">
+  <div class="set-inner">
+    <div class="set-row">
+      <span class="set-t">文字サイズ</span>
+      <div class="seg">
+        <button data-fs="sm" onclick="setFont('sm')">小</button>
+        <button data-fs="md" class="on" onclick="setFont('md')">中</button>
+        <button data-fs="lg" onclick="setFont('lg')">大</button>
+      </div>
+    </div>
+    <div class="set-row">
+      <span class="set-t">背景色</span>
+      <div class="swatches">
+        <button class="sw sw-green"  data-th="green"  onclick="setTheme('green')"></button>
+        <button class="sw sw-pink"   data-th="pink"   onclick="setTheme('pink')"></button>
+        <button class="sw sw-orange" data-th="orange" onclick="setTheme('orange')"></button>
+        <button class="sw sw-blue"   data-th="blue"   onclick="setTheme('blue')"></button>
+        <button class="sw sw-none"   data-th=""       onclick="setTheme('')">×</button>
+      </div>
+    </div>
+    <div class="set-row">
+      <span class="set-t">参加情報</span>
+      <button class="set-leave" onclick="leaveGroup()">名前・グループを変更</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- ===== スタート画面 ===== -->
 <div id="startScreen">
@@ -202,6 +296,8 @@
     <span class="logo">🏢</span>
     <h1>避難所レイアウトプランナー<small>SHELTER OPERATION STUDIO</small></h1>
     <span class="sp"></span>
+    <span class="gbadge" id="gbadge" style="display:none"></span>
+    <button class="hbtn" id="setbtn" onclick="toggleSettings()" title="表示設定">⚙️</button>
     <button onclick="addZone()">＋ 部屋を追加</button>
     <button onclick="saveLayout()" class="primary">💾 保存</button>
     <button onclick="loadLayout()">📂 開く</button>
@@ -260,6 +356,104 @@
 // ===== 設定 =====
 // スプレッドシート＋GASでカードを配信する場合、URLを設定（未設定なら内蔵例題）
 var CARD_GAS_URL = 'https://script.google.com/macros/s/AKfycbyz6f5re-l13zlIpq_TNMKpJyURr1-rmIAKoD6ss_smgVGreFY-_7-pgxZzua5vcafilA/exec';
+
+// ===================================================================
+// 表示設定（文字サイズ・背景色）
+// ===================================================================
+function setFont(sz){
+  document.body.classList.remove('fs-sm','fs-md','fs-lg');
+  document.body.classList.add('fs-'+sz);
+  var seg=document.querySelectorAll('.seg button');
+  for(var i=0;i<seg.length;i++) seg[i].classList.toggle('on', seg[i].getAttribute('data-fs')===sz);
+  try{ localStorage.setItem('ui_font', sz); }catch(e){}
+}
+function setTheme(th){
+  document.body.classList.remove('theme-green','theme-pink','theme-orange','theme-blue');
+  if(th) document.body.classList.add('theme-'+th);
+  var sw=document.querySelectorAll('.swatches .sw');
+  for(var i=0;i<sw.length;i++) sw[i].classList.toggle('on', sw[i].getAttribute('data-th')===th);
+  try{ localStorage.setItem('ui_theme', th); }catch(e){}
+}
+function toggleSettings(){ document.getElementById('setpanel').classList.toggle('show'); }
+(function initUI(){
+  var f='md', t='';
+  try{ f=localStorage.getItem('ui_font')||'md'; }catch(e){}
+  try{ t=localStorage.getItem('ui_theme')||''; }catch(e){}
+  setFont(f); setTheme(t);
+})();
+
+// ===================================================================
+// 参加登録（名前＋グループ）— player と共通仕様
+// ===================================================================
+var MY = { id:null, name:null, group:null, color:null };
+try { var _sv=JSON.parse(localStorage.getItem('sos_member')||'null'); if(_sv&&_sv.name) MY=_sv; } catch(e){}
+var selectedGroup=null, GROUPS=[];
+function colorClass(c){ return ['green','pink','orange','blue'].indexOf(c)>=0 ? c : 'blue'; }
+function gEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function loadGroups(){
+  var cb='grpCb_'+Date.now(), s=document.createElement('script');
+  var to=setTimeout(function(){ cleanup(); gErr('取得できませんでした'); }, 8000);
+  function cleanup(){ try{delete window[cb];}catch(e){} if(s.parentNode)s.parentNode.removeChild(s); clearTimeout(to); }
+  window[cb]=function(res){ cleanup(); GROUPS=(res&&res.groups)?res.groups:[]; renderGroupChoices(); };
+  s.onerror=function(){ cleanup(); gErr('取得できませんでした'); };
+  s.src=CARD_GAS_URL+'?action=groups&callback='+cb;
+  document.head.appendChild(s);
+}
+function gErr(m){ var b=document.getElementById('jg-groups'); if(b)b.innerHTML='<div class="jg-loading">'+m+'</div>'; }
+function renderGroupChoices(){
+  var box=document.getElementById('jg-groups');
+  if(!GROUPS.length){ box.innerHTML='<div class="jg-loading">グループ未登録です。ファシリテーターに連絡してください。</div>'; return; }
+  box.innerHTML=GROUPS.map(function(g){
+    return '<button class="jg-g" data-g="'+gEsc(g.name)+'" onclick="selectGroup(this)"><span class="dot dot-'+colorClass(g.color)+'"></span>'+gEsc(g.name)+'</button>';
+  }).join('');
+}
+function selectGroup(btn){
+  selectedGroup=btn.getAttribute('data-g');
+  var all=document.querySelectorAll('#jg-groups .jg-g');
+  for(var i=0;i<all.length;i++) all[i].classList.toggle('sel', all[i]===btn);
+}
+function doJoin(){
+  var name=(document.getElementById('jg-name').value||'').trim();
+  var err=document.getElementById('jg-err');
+  if(!name){ err.textContent='お名前を入力してください。'; return; }
+  if(!selectedGroup){ err.textContent='グループを選んでください。'; return; }
+  err.textContent='';
+  var go=document.getElementById('jg-go'); go.disabled=true; go.textContent='参加中…';
+  fetch(CARD_GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({action:'join',name:name,group:selectedGroup})})
+    .then(function(r){return r.json();}).then(function(res){ finishJoin(name,selectedGroup,res&&res.id?res.id:null); })
+    .catch(function(){ finishJoin(name,selectedGroup,null); });
+}
+function finishJoin(name,group,id){
+  var g=GROUPS.filter(function(x){return x.name===group;})[0];
+  MY={ id:id, name:name, group:group, color:g?colorClass(g.color):'blue' };
+  try{ localStorage.setItem('sos_member',JSON.stringify(MY)); }catch(e){}
+  applyMember();
+  document.getElementById('joingate').classList.add('hide');
+}
+function applyMember(){
+  var b=document.getElementById('gbadge');
+  if(MY.name&&MY.group){ b.textContent=MY.group+'／'+MY.name; b.className='gbadge g-'+colorClass(MY.color); b.style.display='inline-block'; }
+  else { b.style.display='none'; }
+}
+function leaveGroup(){
+  if(!confirm('名前とグループを変更しますか？')) return;
+  if(MY.id){ try{ fetch(CARD_GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'leave',id:MY.id})}); }catch(e){} }
+  MY={ id:null, name:null, group:null, color:null };
+  try{ localStorage.removeItem('sos_member'); }catch(e){}
+  selectedGroup=null;
+  document.getElementById('setpanel').classList.remove('show');
+  var go=document.getElementById('jg-go'); go.disabled=false; go.textContent='この内容で参加する ✓';
+  document.getElementById('jg-name').value='';
+  document.getElementById('joingate').classList.remove('hide');
+  applyMember(); loadGroups();
+}
+// ゲート起動
+applyMember();
+if(MY.name && MY.group){ document.getElementById('joingate').classList.add('hide'); }
+else { document.getElementById('joingate').classList.remove('hide'); loadGroups(); }
+
 
 // アイテム定義
 var PEOPLE = [
@@ -492,7 +686,7 @@ function drawCard(){
 
   var timer = setTimeout(fallback, 8000);
   script.onerror = fallback;
-  script.src = CARD_GAS_URL + '?action=poll&since=0&callback=' + cbName;
+  script.src = CARD_GAS_URL + '?action=poll&since=0&group=' + encodeURIComponent((window.MY&&MY.group)||'all') + '&callback=' + cbName;
   document.head.appendChild(script);
 }
 function showCard(c){
@@ -667,7 +861,7 @@ init();
     window[cbName] = function(res){ try{ nHandle(res); }catch(e){} cleanup(); };
     var timer = setTimeout(cleanup, NOTIFY_POLL_MS + 6000);
     script.onerror = cleanup;
-    script.src = CARD_GAS_URL + '?action=poll&since=' + nLastId + '&callback=' + cbName;
+    script.src = CARD_GAS_URL + '?action=poll&since=' + nLastId + '&group=' + encodeURIComponent((window.MY&&MY.group)||'all') + '&callback=' + cbName;
     document.head.appendChild(script);
   }
 

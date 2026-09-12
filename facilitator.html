@@ -77,6 +77,17 @@
   .logitem .llt{font-weight:800;color:var(--ink)}
   .logitem .lld{color:var(--sub);line-height:1.5;margin-top:2px}
   .empty{color:var(--sub);font-size:12px;text-align:center;padding:22px 8px;line-height:1.7}
+  .grp-select{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:11px 12px;font-size:14px;font-family:inherit;color:var(--ink);background:#fff}
+  .mgroup{margin-bottom:12px}
+  .mgroup .mgh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .mgroup .mgdot{width:12px;height:12px;border-radius:50%;flex:none}
+  .mgdot.green{background:#3f9e63} .mgdot.pink{background:#c25a86} .mgdot.orange{background:#c9832f} .mgdot.blue{background:#3f77b3}
+  .mgroup .mgname{font-size:13px;font-weight:800;color:var(--ink)}
+  .mgroup .mgcount{font-size:11px;color:var(--sub);font-weight:700}
+  .mgroup .mgdel{margin-left:auto;font-size:10.5px;color:var(--danger);background:none;border:0;cursor:pointer;font-weight:700;font-family:inherit}
+  .mgroup .names{display:flex;flex-wrap:wrap;gap:5px}
+  .mgroup .nm{font-size:11.5px;background:#eef2f5;border-radius:12px;padding:3px 10px;color:#33404c;font-weight:600}
+  .mgroup .none{font-size:11px;color:var(--sub)}
 
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ok);color:#fff;font-weight:800;font-size:13.5px;padding:12px 22px;border-radius:30px;box-shadow:0 6px 20px rgba(0,0,0,.25);opacity:0;transition:.25s;z-index:50;pointer-events:none}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -149,7 +160,30 @@
             <label class="sev-opt danger"><input type="radio" name="sev" value="danger">緊急</label>
           </div>
         </div>
+        <div class="fld">
+          <label>送信先グループ</label>
+          <select id="f-group" class="grp-select"><option value="all">🌐 全グループ</option></select>
+        </div>
         <button class="btn" id="sendbtn" onclick="sendCustom()">📣 このイベントを送信</button>
+      </div>
+
+      <!-- 参加者・グループ -->
+      <div class="card">
+        <h2>👥 参加者・グループ</h2>
+        <div id="memberpanel"><div class="empty">読み込み中…</div></div>
+        <details style="margin-top:10px">
+          <summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:var(--navy)">＋ グループを追加・削除</summary>
+          <div style="margin-top:10px">
+            <div class="fld" style="display:flex;gap:6px;align-items:flex-end">
+              <div style="flex:1"><label>新しいグループ名</label><input id="ng-name" placeholder="例：レッド班"></div>
+              <select id="ng-color" class="grp-select" style="width:auto">
+                <option value="green">緑</option><option value="pink">桃</option>
+                <option value="orange">橙</option><option value="blue" selected>青</option>
+              </select>
+            </div>
+            <button class="btn sm" onclick="addGroup()">グループを追加</button>
+          </div>
+        </details>
       </div>
 
       <!-- 送信ログ -->
@@ -198,6 +232,8 @@ function tryUnlock(){
       document.getElementById('gate').classList.add('hide');
       document.getElementById('gate-pw').value='';
       refreshLog();
+      loadGroupsList();
+      refreshMembers();
     } else {
       document.getElementById('gate-err').textContent='合言葉が違います。';
       document.getElementById('gate-pw').value='';
@@ -288,13 +324,18 @@ function send(ev){
   if(!GAS_URL || GAS_URL.indexOf('script.google.com')<0){
     toast('GAS_URL が未設定です', true); return;
   }
-  var body = { action:'send', token:AUTH_TOKEN, tag:ev.tag, title:ev.title, detail:ev.detail, severity:ev.severity||'info', target:'all' };
+  var grpSel=document.getElementById('f-group');
+  var grp = grpSel ? grpSel.value : 'all';
+  var body = { action:'send', token:AUTH_TOKEN, tag:ev.tag, title:ev.title, detail:ev.detail, severity:ev.severity||'info', group:grp };
   fetch(GAS_URL, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'}, // プリフライト回避
     body: JSON.stringify(body)
   }).then(function(r){ return r.json(); }).then(function(res){
-    if(res && res.ok){ toast('送信しました：'+ev.title); setConn(true); refreshLog(); }
+    if(res && res.ok){
+      var gl = grp==='all' ? '全グループ' : grp;
+      toast('送信（'+gl+'）：'+ev.title); setConn(true); refreshLog();
+    }
     else if(res && res.error==='unauthorized'){ toast('セッションが切れました。再ログインしてください', true); lockAgain(); }
     else { toast('送信に失敗しました', true); }
   }).catch(function(){ toast('通信エラー（URL/デプロイを確認）', true); setConn(false); });
@@ -325,7 +366,9 @@ function refreshLog(){
     if(!res.events || !res.events.length){ log.innerHTML='<div class="empty">まだイベントを送信していません。</div>'; return; }
     log.innerHTML = res.events.slice().reverse().map(function(ev){
       var cls = ev.severity==='danger'?'danger':ev.severity==='warn'?'warn':'';
+      var gl = (ev.group && ev.group!=='all') ? ev.group : '全体';
       return '<div class="logitem '+cls+'"><div class="lh"><span class="ltag">'+esc(ev.tag)+'</span>'+
+        '<span class="ltag" style="background:#eef2f5;color:#33404c">'+esc(gl)+'</span>'+
         '<span class="ltime">'+esc(ev.time)+'</span></div>'+
         '<div class="llt">'+esc(ev.title)+'</div>'+
         (ev.detail?'<div class="lld">'+esc(ev.detail)+'</div>':'')+'</div>';
@@ -334,19 +377,124 @@ function refreshLog(){
 }
 
 function clearSession(){
-  if(!confirm('送信済みイベントをすべて消去します。よろしいですか？')) return;
+  var grpSel=document.getElementById('f-group');
+  var grp = grpSel ? grpSel.value : 'all';
+  var gl = grp==='all' ? '全グループ' : grp;
+  var msg = grp==='all'
+    ? '全グループの送信済みイベントをすべて消去します。よろしいですか？'
+    : '「'+gl+'」のイベントを消去します。よろしいですか？';
+  if(!confirm(msg)) return;
+  var body = {action:'clear', token:AUTH_TOKEN};
+  if(grp!=='all') body.group = grp;
   fetch(GAS_URL, {
     method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({action:'clear', token:AUTH_TOKEN})
+    body: JSON.stringify(body)
   }).then(function(r){ return r.json(); }).then(function(res){
     if(res && res.error==='unauthorized'){ toast('セッションが切れました。再ログインしてください', true); lockAgain(); return; }
-    toast('セッションをリセットしました'); refreshLog();
+    toast('リセットしました（'+gl+'）'); refreshLog();
   }).catch(function(){ toast('リセットに失敗しました', true); });
 }
 
+// ===== グループ管理 =====
+var FGROUPS = [];
+function colorClass_(c){ return ['green','pink','orange','blue'].indexOf(c)>=0 ? c : 'blue'; }
+
+function loadGroupsList(){
+  fetch(GAS_URL+'?action=groups').then(function(r){return r.json();}).then(function(res){
+    FGROUPS = (res && res.groups) ? res.groups : [];
+    renderGroupSelect();
+  }).catch(function(){});
+}
+function renderGroupSelect(){
+  var sel=document.getElementById('f-group');
+  if(!sel) return;
+  var cur = sel.value;
+  var html = '<option value="all">🌐 全グループ</option>';
+  html += FGROUPS.map(function(g){ return '<option value="'+esc(g.name)+'">'+esc(g.name)+'</option>'; }).join('');
+  sel.innerHTML = html;
+  // 選択を維持
+  if(cur){ sel.value = cur; }
+}
+function addGroup(){
+  var name=(document.getElementById('ng-name').value||'').trim();
+  var color=document.getElementById('ng-color').value;
+  if(!name){ toast('グループ名を入力してください', true); return; }
+  fetch(GAS_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action:'addGroup', token:AUTH_TOKEN, name:name, color:color})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(res && res.error==='unauthorized'){ toast('セッション切れ。再ログインを', true); lockAgain(); return; }
+    if(res && res.ok){
+      FGROUPS = res.groups || FGROUPS;
+      document.getElementById('ng-name').value='';
+      toast('グループを追加しました：'+name);
+      renderGroupSelect(); refreshMembers();
+    }
+  }).catch(function(){ toast('追加に失敗しました', true); });
+}
+function delGroup(name){
+  if(!confirm('グループ「'+name+'」を削除しますか？（このグループの参加者表示も消えます）')) return;
+  fetch(GAS_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({action:'delGroup', token:AUTH_TOKEN, name:name})
+  }).then(function(r){return r.json();}).then(function(res){
+    if(res && res.error==='unauthorized'){ toast('セッション切れ。再ログインを', true); lockAgain(); return; }
+    FGROUPS = (res && res.groups) ? res.groups : FGROUPS;
+    toast('グループを削除しました');
+    renderGroupSelect(); refreshMembers();
+  }).catch(function(){ toast('削除に失敗しました', true); });
+}
+
+// ===== 参加者一覧 =====
+function refreshMembers(){
+  fetch(GAS_URL+'?action=members').then(function(r){return r.json();}).then(function(res){
+    var members = (res && res.members) ? res.members : [];
+    renderMembers(members);
+  }).catch(function(){});
+}
+function renderMembers(members){
+  var panel=document.getElementById('memberpanel');
+  if(!panel) return;
+  if(!FGROUPS.length){
+    panel.innerHTML='<div class="empty">グループがありません。下から追加してください。</div>';
+    return;
+  }
+  // グループごとに参加者を分類
+  var byGroup = {};
+  FGROUPS.forEach(function(g){ byGroup[g.name]=[]; });
+  var ungrouped=[];
+  members.forEach(function(m){
+    if(byGroup[m.group]) byGroup[m.group].push(m.name);
+    else ungrouped.push(m.name + (m.group?'（'+m.group+'）':''));
+  });
+  var html = FGROUPS.map(function(g){
+    var cc=colorClass_(g.color);
+    var names = byGroup[g.name];
+    var namesHtml = names.length
+      ? names.map(function(n){ return '<span class="nm">'+esc(n)+'</span>'; }).join('')
+      : '<span class="none">まだ参加者がいません</span>';
+    return '<div class="mgroup"><div class="mgh">'+
+      '<span class="mgdot '+cc+'"></span>'+
+      '<span class="mgname">'+esc(g.name)+'</span>'+
+      '<span class="mgcount">'+names.length+'人</span>'+
+      '<button class="mgdel" onclick="delGroup(\''+esc(g.name).replace(/'/g,"\\'")+'\')">削除</button>'+
+      '</div><div class="names">'+namesHtml+'</div></div>';
+  }).join('');
+  if(ungrouped.length){
+    html += '<div class="mgroup"><div class="mgh"><span class="mgname">未分類</span>'+
+      '<span class="mgcount">'+ungrouped.length+'人</span></div><div class="names">'+
+      ungrouped.map(function(n){return '<span class="nm">'+esc(n)+'</span>';}).join('')+'</div></div>';
+  }
+  panel.innerHTML = html;
+}
+
+
 buildPresets();
 refreshLog();
+loadGroupsList();
+refreshMembers();
 setInterval(refreshLog, 8000);
+setInterval(refreshMembers, 8000);
 </script>
 </body>
 </html>
