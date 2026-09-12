@@ -47,6 +47,20 @@
   header button.big{font-size:25px;padding:7px 16px}
 
   /* フロアタブ */
+  /* ===== 状況設定バー ===== */
+  .sitbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#eef4f8;padding:8px 14px;flex:none;border-bottom:1px solid var(--line)}
+  .sitgrp{display:flex;align-items:center;gap:6px}
+  .sitgrp label{font-size:12px;font-weight:800;color:var(--sub);white-space:nowrap}
+  .sitbar select{border:1.5px solid var(--line);border-radius:8px;padding:6px 9px;font-size:13px;font-family:inherit;color:var(--ink);background:#fff}
+  .sitclock{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .sitclock .clock{font-size:26px;font-weight:900;color:var(--navy);font-variant-numeric:tabular-nums;letter-spacing:.02em;min-width:118px;text-align:center;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:4px 12px}
+  .sitclock .day{font-size:12px;font-weight:800;color:var(--sub)}
+  .sitbtn{background:var(--navy);color:#fff;border:0;border-radius:8px;padding:8px 13px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+  .sitbtn:hover{background:#0d2b47}
+  .sitbtn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+  .sitbtn.ghost:hover{background:#f4f8fb}
+  body.fs-lg .sitclock .clock{font-size:32px} body.fs-sm .sitclock .clock{font-size:22px}
+
   .floortabs{display:flex;align-items:center;gap:6px;background:#dbe4ea;padding:6px 12px;flex:none;border-bottom:1px solid var(--line);overflow-x:auto}
   .ftab{background:#fff;border:1.5px solid var(--line);border-radius:8px 8px 0 0;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--sub)}
   .ftab.active{background:var(--plan);border-color:var(--steel);color:var(--navy);border-bottom-color:var(--plan)}
@@ -73,10 +87,10 @@
     background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
     background-size:40px 40px;border:2px solid var(--steel);border-radius:6px;box-shadow:var(--shadow)}
   .zone{position:absolute;border:2px solid var(--steel);border-radius:8px;background:rgba(255,255,255,.72);backdrop-filter:blur(1px);overflow:hidden;min-width:80px;min-height:60px}
-  .zone .zhead{background:var(--steel);color:#fff;font-size:12px;font-weight:800;padding:4px 8px;cursor:move;display:flex;align-items:center;gap:6px}
+  .zone .zhead{background:var(--steel);color:#fff;font-size:24px;font-weight:800;padding:4px 8px;cursor:move;display:flex;align-items:center;gap:6px}
   .zone .zhead .zcap{margin-left:auto;font-size:10px;font-weight:700;background:rgba(255,255,255,.25);border-radius:8px;padding:0 7px}
-  .zone .zbody{padding:6px;font-size:11px;color:#33404c;position:relative;height:calc(100% - 26px)}
-  .zone textarea{width:100%;height:100%;border:0;background:transparent;resize:none;font-family:inherit;font-size:11px;color:#33404c;outline:none}
+  .zone .zbody{padding:6px;font-size:22px;color:#33404c;position:relative;height:calc(100% - 26px)}
+  .zone textarea{width:100%;height:100%;border:0;background:transparent;resize:none;font-family:inherit;font-size:22px;color:#33404c;outline:none}
   .zone .zresize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--steel) 50%);border-radius:0 0 6px 0}
   .zone .zdel{cursor:pointer;opacity:.7}
   .zone .zdel:hover{opacity:1}
@@ -99,6 +113,9 @@
   .fld label{display:block;font-size:11px;color:var(--sub);font-weight:700;margin-bottom:4px}
   .fld input,.fld textarea{width:100%;border:1.5px solid var(--line);border-radius:8px;padding:9px;font-size:13px;font-family:inherit}
   .fld textarea{height:70px;resize:vertical}
+  .zcolors{display:flex;gap:8px;flex-wrap:wrap}
+  .zc{width:30px;height:30px;border-radius:50%;border:2px solid rgba(0,0,0,.15);cursor:pointer;padding:0}
+  .zc.on{border-color:var(--navy);box-shadow:0 0 0 2px rgba(18,58,94,.25)}
   .side-btn{width:100%;background:var(--navy);color:#fff;border:0;border-radius:9px;padding:11px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit;margin-bottom:8px}
   .side-btn.teal{background:var(--steel)}
   .side-btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
@@ -316,10 +333,45 @@
     <span class="gbadge" id="gbadge" style="display:none"></span>
     <button class="hbtn" id="setbtn" onclick="toggleSettings()" title="表示設定">⚙️</button>
     <button class="big" onclick="addZone()">＋ 部屋を追加</button>
-    <button onclick="saveLayout()" class="primary">💾 保存</button>
-    <button onclick="loadLayout()">📂 開く</button>
-    <button onclick="clearFloor()">🗑 クリア</button>
+    <button onclick="saveLayout()" class="primary big">💾 保存</button>
+    <button class="big" onclick="loadLayout()">📂 開く</button>
+    <button class="big" onclick="clearFloor()">🗑 クリア</button>
   </header>
+
+  <!-- ===== 状況設定バー ===== -->
+  <div class="sitbar" id="sitbar">
+    <div class="sitgrp">
+      <label>🗓 月</label>
+      <select id="sit-month" onchange="onSitChange()"></select>
+    </div>
+    <div class="sitgrp">
+      <label>🌡 気温</label>
+      <select id="sit-temp" onchange="onSitChange()"></select>
+    </div>
+    <div class="sitgrp">
+      <label>💧 湿度</label>
+      <select id="sit-humid" onchange="onSitChange()"></select>
+    </div>
+    <div class="sitgrp">
+      <label>⏰ 開始</label>
+      <select id="sit-start" onchange="onStartChange()"></select>
+    </div>
+    <div class="sitgrp">
+      <label>速さ</label>
+      <select id="sit-speed" onchange="onSpeedChange()">
+        <option value="1">等速</option>
+        <option value="60" selected>60倍</option>
+        <option value="360">360倍</option>
+        <option value="1440">1日=1分</option>
+      </select>
+    </div>
+    <div class="sitclock">
+      <span class="day" id="sit-day">1日目</span>
+      <span class="clock" id="sit-clock">08:00</span>
+      <button class="sitbtn" id="sit-play" onclick="toggleClock()">▶ 開始</button>
+      <button class="sitbtn ghost" onclick="resetClock()">⟳ リセット</button>
+    </div>
+  </div>
 
   <div class="floortabs" id="floortabs"></div>
 
@@ -392,6 +444,92 @@ function setTheme(th){
   try{ localStorage.setItem('ui_theme', th); }catch(e){}
 }
 function toggleSettings(){ document.getElementById('setpanel').classList.toggle('show'); }
+
+// ===================================================================
+// 状況設定バー（月・気温・湿度・時刻の自動経過）
+// ===================================================================
+var SIT = { month:4, temp:20, humid:50, startMin:8*60, speed:60, elapsedSec:0, running:false };
+try { var _s=JSON.parse(localStorage.getItem('sos_situation')||'null'); if(_s){ SIT.month=_s.month||4; SIT.temp=(_s.temp!=null?_s.temp:20); SIT.humid=(_s.humid!=null?_s.humid:50); SIT.startMin=(_s.startMin!=null?_s.startMin:8*60); SIT.speed=_s.speed||60; } } catch(e){}
+var sitTimer=null;
+
+function saveSit(){
+  try{ localStorage.setItem('sos_situation', JSON.stringify({month:SIT.month,temp:SIT.temp,humid:SIT.humid,startMin:SIT.startMin,speed:SIT.speed})); }catch(e){}
+}
+function pad2(n){ return (n<10?'0':'')+n; }
+
+function buildSitOptions(){
+  // 月
+  var mo=document.getElementById('sit-month'); var mh='';
+  for(var m=1;m<=12;m++){ mh+='<option value="'+m+'"'+(m===SIT.month?' selected':'')+'>'+m+'月</option>'; }
+  mo.innerHTML=mh;
+  // 気温 -10〜40 (5刻み)
+  var tp=document.getElementById('sit-temp'); var th='';
+  for(var t=-10;t<=40;t+=5){ th+='<option value="'+t+'"'+(t===SIT.temp?' selected':'')+'>'+t+'℃</option>'; }
+  tp.innerHTML=th;
+  // 湿度 0〜100 (10刻み)
+  var hu=document.getElementById('sit-humid'); var hh='';
+  for(var h=0;h<=100;h+=10){ hh+='<option value="'+h+'"'+(h===SIT.humid?' selected':'')+'>'+h+'%</option>'; }
+  hu.innerHTML=hh;
+  // 開始時刻 0:00〜23:30 (30分刻み)
+  var st=document.getElementById('sit-start'); var sh='';
+  for(var mins=0;mins<24*60;mins+=30){ sh+='<option value="'+mins+'"'+(mins===SIT.startMin?' selected':'')+'>'+pad2(Math.floor(mins/60))+':'+pad2(mins%60)+'</option>'; }
+  st.innerHTML=sh;
+  // 速さ
+  document.getElementById('sit-speed').value=String(SIT.speed);
+}
+
+function onSitChange(){
+  SIT.month=parseInt(document.getElementById('sit-month').value,10);
+  SIT.temp=parseInt(document.getElementById('sit-temp').value,10);
+  SIT.humid=parseInt(document.getElementById('sit-humid').value,10);
+  saveSit();
+}
+function onStartChange(){
+  SIT.startMin=parseInt(document.getElementById('sit-start').value,10);
+  SIT.elapsedSec=0; // 開始時刻を変えたら経過をリセット
+  saveSit(); renderClock();
+}
+function onSpeedChange(){
+  SIT.speed=parseInt(document.getElementById('sit-speed').value,10);
+  saveSit();
+}
+
+// 現在のゲーム内時刻を計算して表示
+function renderClock(){
+  var totalMin = SIT.startMin + Math.floor(SIT.elapsedSec/60);
+  var day = 1 + Math.floor(totalMin/(24*60));
+  var mn = ((totalMin % (24*60)) + (24*60)) % (24*60);
+  document.getElementById('sit-clock').textContent = pad2(Math.floor(mn/60))+':'+pad2(mn%60);
+  document.getElementById('sit-day').textContent = day+'日目';
+}
+
+function tickClock(){
+  // 実時間1秒ごとに、speed秒だけゲーム内時間を進める
+  SIT.elapsedSec += SIT.speed;
+  renderClock();
+}
+function toggleClock(){
+  var btn=document.getElementById('sit-play');
+  if(SIT.running){
+    SIT.running=false; if(sitTimer){ clearInterval(sitTimer); sitTimer=null; }
+    btn.textContent='▶ 開始';
+  } else {
+    SIT.running=true;
+    btn.textContent='⏸ 一時停止';
+    sitTimer=setInterval(tickClock, 1000);
+  }
+}
+function resetClock(){
+  SIT.running=false; if(sitTimer){ clearInterval(sitTimer); sitTimer=null; }
+  SIT.elapsedSec=0;
+  document.getElementById('sit-play').textContent='▶ 開始';
+  renderClock();
+}
+
+// 起動
+buildSitOptions();
+renderClock();
+
 (function initUI(){
   var f='md', t='';
   try{ f=localStorage.getItem('ui_font')||'md'; }catch(e){}
@@ -575,9 +713,11 @@ function addZone(){
   curFloor().zones.push(z); renderCanvas(); selectZone(z.id);
 }
 function zoneEl(z){
+  var col = zoneColor(z.color||'steel');
   var el=document.createElement('div'); el.className='zone'; el.style.left=z.x+'px'; el.style.top=z.y+'px'; el.style.width=z.w+'px'; el.style.height=z.h+'px'; el.dataset.id=z.id;
-  el.innerHTML='<div class="zhead"><span>'+z.name+'</span>'+(z.cap?'<span class="zcap">定員'+z.cap+'</span>':'')+'<span class="zdel" onclick="delZone(event,\''+z.id+'\')">🗑</span></div>'+
-    '<div class="zbody"><textarea placeholder="メモ（役割・注意点など）" oninput="zoneNote(\''+z.id+'\',this.value)">'+(z.note||'')+'</textarea><div class="zresize"></div></div>';
+  el.style.borderColor = col;
+  el.innerHTML='<div class="zhead" style="background:'+col+'"><span>'+z.name+'</span>'+(z.cap?'<span class="zcap">定員'+z.cap+'</span>':'')+'<span class="zdel" onclick="delZone(event,\''+z.id+'\')">🗑</span></div>'+
+    '<div class="zbody"><textarea placeholder="メモ（役割・注意点など）" oninput="zoneNote(\''+z.id+'\',this.value)">'+(z.note||'')+'</textarea><div class="zresize" style="background:linear-gradient(135deg,transparent 50%,'+col+' 50%)"></div></div>';
   // 選択
   el.addEventListener('mousedown',function(e){ if(e.target.tagName!=='TEXTAREA'){ selectZone(z.id); } });
   // ヘッダドラッグで移動
@@ -633,8 +773,8 @@ canvas.addEventListener('drop',function(e){
 });
 
 // ===== 選択と設定パネル =====
-function selectZone(id){ state.sel={type:'zone', id:id}; renderSel(); }
-function selectItem(id){ state.sel={type:'item', id:id}; renderSel(); }
+function selectZone(id){ state.sel={type:'zone', id:id}; if(window.switchSide) switchSide('set'); renderSel(); }
+function selectItem(id){ state.sel={type:'item', id:id}; if(window.switchSide) switchSide('set'); renderSel(); }
 function renderSel(){
   var p=document.getElementById('selpanel');
   if(!state.sel){ p.innerHTML='<div class="empty">部屋やアイテムを選ぶと、ここで名称・収容人数・メモを編集できます。</div>'; return; }
@@ -644,6 +784,9 @@ function renderSel(){
     p.innerHTML=''+
       '<div class="fld"><label>部屋の名前</label><input value="'+esc(z.name)+'" oninput="setZone(\''+z.id+'\',\'name\',this.value)"></div>'+
       '<div class="fld"><label>収容人数（定員）</label><input type="number" min="0" value="'+(z.cap||'')+'" placeholder="例：50" oninput="setZone(\''+z.id+'\',\'cap\',this.value)"></div>'+
+      '<div class="fld"><label>部屋の色</label><div class="zcolors">'+
+        zoneColorButtons(z.id, z.color||'steel')+
+      '</div></div>'+
       '<div class="fld"><label>メモ</label><textarea oninput="setZone(\''+z.id+'\',\'note\',this.value)" placeholder="役割・注意点・割り当てなど">'+esc(z.note||'')+'</textarea></div>'+
       '<button class="side-btn ghost" onclick="delZone(event,\''+z.id+'\')">この部屋を削除</button>';
   } else {
@@ -655,6 +798,27 @@ function renderSel(){
   }
 }
 function setZone(id,k,v){ var z=curFloor().zones.find(function(z){return z.id===id;}); if(z){ z[k]=(k==='cap')?(v.replace(/[^0-9]/g,'')):v; renderCanvas(); } }
+
+// 部屋の色定義（5色＋既定のスチール）
+var ZONE_COLORS = {
+  steel:  '#3f6f8f',
+  green:  '#3f9e63',
+  pink:   '#c25a86',
+  orange: '#c9832f',
+  blue:   '#3f77b3',
+  purple: '#8a5cc4'
+};
+function zoneColor(c){ return ZONE_COLORS[c] || ZONE_COLORS.steel; }
+function zoneColorButtons(id, cur){
+  return Object.keys(ZONE_COLORS).map(function(k){
+    return '<button class="zc'+(k===cur?' on':'')+'" style="background:'+ZONE_COLORS[k]+'" '+
+      'onclick="setZoneColor(\''+id+'\',\''+k+'\')" title="'+k+'"></button>';
+  }).join('');
+}
+function setZoneColor(id, color){
+  var z=curFloor().zones.find(function(z){return z.id===id;});
+  if(z){ z.color=color; renderCanvas(); renderSel(); }
+}
 function setItem(id,k,v){ var it=curFloor().items.find(function(i){return i.id===id;}); if(it){ it[k]=(k==='count')?(v.replace(/[^0-9]/g,'')):v; renderCanvas(); } }
 function esc(s){ return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
 
