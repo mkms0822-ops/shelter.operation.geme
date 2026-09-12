@@ -125,6 +125,17 @@
   .howto-skip{font-size:12px;color:var(--sub);display:flex;align-items:center;gap:6px;cursor:pointer}
   .howto-close{margin-left:auto;background:var(--navy);color:#fff;border:0;border-radius:10px;padding:11px 22px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
 
+  /* ===== 受信ログ ===== */
+  .log-badge{display:inline-block;min-width:16px;height:16px;line-height:16px;padding:0 4px;margin-left:5px;font-size:10px;font-weight:800;color:#fff;background:var(--danger);border-radius:9px;text-align:center;vertical-align:top}
+  .logitem{background:#fff;border:1px solid var(--line);border-left:4px solid var(--info);border-radius:9px;padding:10px 11px;margin-bottom:8px}
+  .logitem.warn{border-left-color:var(--warn)} .logitem.danger{border-left-color:var(--danger)}
+  .logitem .lh{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+  .logitem .ltag{font-size:9.5px;font-weight:800;color:#fff;background:var(--info);border-radius:9px;padding:1px 8px}
+  .logitem.warn .ltag{background:var(--warn)} .logitem.danger .ltag{background:var(--danger)}
+  .logitem .ltime{margin-left:auto;font-size:10px;color:var(--sub);font-weight:700}
+  .logitem .lt{font-size:13px;font-weight:800;color:var(--ink);line-height:1.4}
+  .logitem .ld{font-size:11.5px;color:#33404c;line-height:1.55;margin-top:3px}
+
   /* ===== ポップアップ通知（player.htmlより移植） ===== */
   #overlay{position:fixed;inset:0;background:rgba(10,25,40,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
   #overlay.show{display:flex;animation:fade .2s ease}
@@ -223,6 +234,7 @@
       <div class="side-tabs">
         <button class="on" id="tab-set" onclick="switchSide('set')">選択中の設定</button>
         <button id="tab-card" onclick="switchSide('card')">状況カード</button>
+        <button id="tab-log" onclick="switchSide('log')">📜 受信ログ<span id="log-badge" class="log-badge" style="display:none">0</span></button>
       </div>
       <div class="side-body" id="side-set">
         <div id="selpanel"><div class="empty">部屋やアイテムを選ぶと、ここで名称・収容人数・メモを編集できます。</div></div>
@@ -231,6 +243,14 @@
         <button class="side-btn teal" onclick="drawCard()">🎴 状況カードを引く</button>
         <div id="cardarea"><div class="empty">「状況カードを引く」で、実話ベースの課題が表示されます。<br>この状況にどう対応するか、図面を使って話し合いましょう。</div></div>
         <div class="muted" style="margin-top:12px">※ カードはスプレッドシート（GAS）から読み込む設定にできます。未設定時は内蔵の例題が出ます。</div>
+      </div>
+      <div class="side-body" id="side-log" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span class="muted" style="font-weight:800">ファシリテーターから届いたイベント</span>
+          <span style="flex:1"></span>
+          <button class="side-btn ghost" style="width:auto;padding:6px 12px;margin:0;font-size:11.5px" onclick="clearLog()">消去</button>
+        </div>
+        <div id="logarea"><div class="empty">まだイベントは届いていません。<br>ファシリテーターがイベントを送信すると、ここに履歴が残ります。</div></div>
       </div>
     </aside>
   </div>
@@ -428,8 +448,11 @@ function esc(s){ return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'
 function switchSide(which){
   document.getElementById('tab-set').classList.toggle('on',which==='set');
   document.getElementById('tab-card').classList.toggle('on',which==='card');
+  document.getElementById('tab-log').classList.toggle('on',which==='log');
   document.getElementById('side-set').style.display=which==='set'?'block':'none';
   document.getElementById('side-card').style.display=which==='card'?'block':'none';
+  document.getElementById('side-log').style.display=which==='log'?'block':'none';
+  if(which==='log' && window.markLogRead) window.markLogRead();
 }
 
 // ===== 状況カード =====
@@ -542,6 +565,65 @@ init();
     danger: {ic:'🚨', label:'緊急事態'}
   };
 
+  // ===== 受信ログ =====
+  var LOG_KEY = 'planner_event_log';   // 受信したイベント履歴（localStorage）
+  var UNREAD_KEY = 'planner_log_unread'; // 未読件数
+  var evLog = [];
+  var unread = 0;
+  try { evLog = JSON.parse(localStorage.getItem(LOG_KEY) || '[]') || []; } catch(e){ evLog = []; }
+  try { unread = parseInt(localStorage.getItem(UNREAD_KEY) || '0', 10) || 0; } catch(e){ unread = 0; }
+
+  function nEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function saveLog(){
+    try{ localStorage.setItem(LOG_KEY, JSON.stringify(evLog.slice(-100))); }catch(e){}
+    try{ localStorage.setItem(UNREAD_KEY, String(unread)); }catch(e){}
+  }
+
+  function renderLog(){
+    var area = document.getElementById('logarea');
+    if(!area) return;
+    if(!evLog.length){
+      area.innerHTML = '<div class="empty">まだイベントは届いていません。<br>ファシリテーターがイベントを送信すると、ここに履歴が残ります。</div>';
+      return;
+    }
+    area.innerHTML = evLog.slice().reverse().map(function(ev){
+      if(!ev) return '';
+      var sev = ev.severity;
+      var cls = sev==='danger'?'danger':sev==='warn'?'warn':'';
+      return '<div class="logitem '+cls+'"><div class="lh"><span class="ltag">'+nEsc(ev.tag||'状況')+'</span>'+
+        '<span class="ltime">'+nEsc(ev.time||'')+'</span></div>'+
+        '<div class="lt">'+nEsc(ev.title||ev.t||'')+'</div>'+
+        ((ev.detail||ev.d)?'<div class="ld">'+nEsc(ev.detail||ev.d)+'</div>':'')+'</div>';
+    }).join('');
+  }
+
+  function updateBadge(){
+    var b = document.getElementById('log-badge');
+    if(!b) return;
+    if(unread>0){ b.textContent = unread>99?'99+':unread; b.style.display='inline-block'; }
+    else { b.style.display='none'; }
+  }
+
+  function addToLog(ev){
+    evLog.push({
+      id: ev.id, time: ev.time||'', tag: ev.tag||'状況',
+      title: ev.title||ev.t||'', detail: ev.detail||ev.d||'', severity: ev.severity||'info'
+    });
+    unread++;
+    saveLog();
+    renderLog();
+    updateBadge();
+  }
+
+  // 受信ログタブを開いたら未読をクリア（switchSideから呼ばれる）
+  window.markLogRead = function(){ unread=0; saveLog(); updateBadge(); };
+  // 受信ログを消去（消去ボタンから呼ばれる）
+  window.clearLog = function(){
+    if(!confirm('受信ログをすべて消去しますか？')) return;
+    evLog=[]; unread=0; saveLog(); renderLog(); updateBadge();
+  };
+
   function nBeep(){
     try{
       var ctx=new (window.AudioContext||window.webkitAudioContext)();
@@ -564,6 +646,7 @@ init();
       if(nQueued[ev.id]) return;
       nQueued[ev.id]=true;
       nQueue.push(ev);
+      addToLog(ev);        // 受信ログに追加
     });
     nPump();
   }
@@ -620,6 +703,8 @@ init();
   };
 
   // 起動
+  renderLog();
+  updateBadge();
   nPoll();
   setInterval(nPoll, NOTIFY_POLL_MS);
 })();
