@@ -397,8 +397,9 @@ function toggleSettings(){ document.getElementById('setpanel').classList.toggle(
 // ===================================================================
 // 参加登録（名前＋グループ）— player と共通仕様
 // ===================================================================
-var MY = { id:null, name:null, group:null, color:null };
-try { var _sv=JSON.parse(localStorage.getItem('sos_member')||'null'); if(_sv&&_sv.name) MY=_sv; } catch(e){}
+window.MY = { id:null, name:null, group:null, color:null };
+var MY = window.MY;
+try { var _sv=JSON.parse(localStorage.getItem('sos_member')||'null'); if(_sv&&_sv.name){ MY=_sv; window.MY=_sv; } } catch(e){}
 var selectedGroup=null, GROUPS=[];
 function colorClass(c){ return ['green','pink','orange','blue'].indexOf(c)>=0 ? c : 'blue'; }
 function gEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -440,6 +441,7 @@ function doJoin(){
 function finishJoin(name,group,id){
   var g=GROUPS.filter(function(x){return x.name===group;})[0];
   MY={ id:id, name:name, group:group, color:g?colorClass(g.color):'blue' };
+  window.MY = MY;
   try{ localStorage.setItem('sos_member',JSON.stringify(MY)); }catch(e){}
   applyMember();
   document.getElementById('joingate').classList.add('hide');
@@ -453,6 +455,7 @@ function leaveGroup(){
   if(!confirm('名前とグループを変更しますか？')) return;
   if(MY.id){ try{ fetch(CARD_GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'leave',id:MY.id})}); }catch(e){} }
   MY={ id:null, name:null, group:null, color:null };
+  window.MY = MY;
   try{ localStorage.removeItem('sos_member'); }catch(e){}
   selectedGroup=null;
   document.getElementById('setpanel').classList.remove('show');
