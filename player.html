@@ -193,13 +193,14 @@ function handlePollResult(res){
   dbg('接続OK / 既読ID:'+lastId+' / 未表示:'+queue.length+'件 / サーバー最新ID:'+(res.lastId!=null?res.lastId:'?'));
   if(n){
     res.events.forEach(function(ev){
+      if(!ev || ev.id==null) return;
       if(ev.id<=lastId) return;
       if(queued[ev.id]) return;
       queued[ev.id]=true;
       queue.push(ev);
       history.push(ev);
     });
-    renderHistory();
+    try { renderHistory(); } catch(e){ /* 履歴描画で失敗してもポップアップは出す */ }
     pump();
   }
 }
@@ -274,10 +275,14 @@ function closePopup(){
 
 function renderHistory(){
   var hl=document.getElementById('hlist');
+  if(!hl) return;
   if(!history.length){ return; }
-  document.getElementById('toggle').style.display='block';
+  var tg=document.getElementById('toggle');
+  if(tg) tg.style.display='block';
   hl.innerHTML = history.slice().reverse().map(function(ev){
-    var cls = ev.severity==='danger'?'danger':ev.severity==='warn'?'warn':'';
+    if(!ev) return '';
+    var sev = ev.severity;
+    var cls = sev==='danger'?'danger':sev==='warn'?'warn':'';
     return '<div class="hitem '+cls+'"><div class="hh"><span class="htag">'+esc(ev.tag)+'</span>'+
       '<span class="htime">'+esc(ev.time)+'</span></div>'+
       '<div class="ht">'+esc(ev.title)+'</div>'+
