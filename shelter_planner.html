@@ -211,7 +211,7 @@
 <script>
 // ===== 設定 =====
 // スプレッドシート＋GASでカードを配信する場合、URLを設定（未設定なら内蔵例題）
-var CARD_GAS_URL = 'https://script.google.com/macros/s/AKfycbyR9g0TeWemG82FEgXGAiK-XB4CB3RtfRgLSDaDw-DcRMIFeptCKZEAx_f_8FmryoZB9A/exec';
+var CARD_GAS_URL = 'https://script.google.com/macros/s/AKfycbyz6f5re-l13zlIpq_TNMKpJyURr1-rmIAKoD6ss_smgVGreFY-_7-pgxZzua5vcafilA/exec';
 
 // アイテム定義
 var PEOPLE = [
@@ -405,17 +405,44 @@ function switchSide(which){
 }
 
 // ===== 状況カード =====
+// GASは {ok:true, events:[...]} を返す。JSONPで取得して302を回避する。
+var cardJsonpSeq = 0;
 function drawCard(){
   var area=document.getElementById('cardarea');
-  if(CARD_GAS_URL){
-    area.innerHTML='<div class="empty">カードを読み込み中…</div>';
-    fetch(CARD_GAS_URL).then(function(r){return r.json();}).then(function(list){
-      if(list&&list.length){ showCard(list[Math.floor(Math.random()*list.length)]); }
-      else { showCard(CARDS[Math.floor(Math.random()*CARDS.length)]); }
-    }).catch(function(){ showCard(CARDS[Math.floor(Math.random()*CARDS.length)]); });
+  if(!CARD_GAS_URL || CARD_GAS_URL.indexOf('script.google.com')<0){
+    showCard(CARDS[Math.floor(Math.random()*CARDS.length)]);
     return;
   }
-  showCard(CARDS[Math.floor(Math.random()*CARDS.length)]);
+  area.innerHTML='<div class="empty">カードを読み込み中…</div>';
+
+  var cbName = 'cardCb_' + (++cardJsonpSeq) + '_' + Date.now();
+  var script = document.createElement('script');
+  var done = false;
+
+  function fallback(){
+    if(done) return; cleanup();
+    showCard(CARDS[Math.floor(Math.random()*CARDS.length)]);
+  }
+  function cleanup(){
+    if(done) return; done = true;
+    try { delete window[cbName]; } catch(e){ window[cbName] = undefined; }
+    if(script.parentNode) script.parentNode.removeChild(script);
+    clearTimeout(timer);
+  }
+
+  window[cbName] = function(res){
+    if(done) return;
+    // events 配列を取り出す（オブジェクトでも配列でも対応）
+    var list = (res && res.events) ? res.events : (Array.isArray(res) ? res : []);
+    cleanup();
+    if(list && list.length){ showCard(list[Math.floor(Math.random()*list.length)]); }
+    else { showCard(CARDS[Math.floor(Math.random()*CARDS.length)]); }
+  };
+
+  var timer = setTimeout(fallback, 8000);
+  script.onerror = fallback;
+  script.src = CARD_GAS_URL + '?action=poll&since=0&callback=' + cbName;
+  document.head.appendChild(script);
 }
 function showCard(c){
   document.getElementById('cardarea').innerHTML=
