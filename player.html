@@ -98,6 +98,23 @@
   .sw-green{background:#e6f4ea} .sw-pink{background:#fbe9f0} .sw-orange{background:#fdeede} .sw-blue{background:#e5eef8} .sw-none{background:#fff}
   .set-leave{background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit}
   .set-leave:hover{background:#f4f8fb}
+  /* ===== スマホ対応 ===== */
+  @media(max-width:560px){
+    header{flex-wrap:wrap;padding:9px 12px;gap:8px}
+    header h1{font-size:15px}
+    header h1 small{font-size:9px}
+    main{padding:12px 12px 30px}
+    .tabs{padding:10px 12px 0}
+    .tab{padding:8px 12px;font-size:12.5px}
+    /* 状況カード：縦に折り返して見やすく */
+    .sitcard{gap:8px 12px}
+    .sitcard .sc-clock{margin-left:0;width:100%}
+    .sitrow{flex-direction:column;align-items:flex-start}
+    .sitrow-g{min-width:0}
+    .sitrow .sitcard{width:100%}
+    .memo textarea{min-height:74px}
+    .evitem .et{font-size:15px}
+  }
 </style>
 </head>
 <body>

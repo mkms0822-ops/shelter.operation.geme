@@ -135,6 +135,34 @@
     #palette{width:150px}
     #side{width:220px}
   }
+  /* ===== スマホ対応（760px以下） ===== */
+  @media(max-width:760px){
+    #app{height:auto;min-height:100vh;min-height:100dvh}
+    /* ヘッダー：ボタンを折り返して全部見えるように */
+    header{flex-wrap:wrap;padding:8px 12px;gap:8px;position:sticky;top:0;z-index:60}
+    header h1{font-size:14px;flex:1 1 auto}
+    header h1 small{font-size:9px}
+    header button{font-size:13px;padding:8px 10px}
+    header button.big{font-size:16px;padding:8px 12px}
+    .gbadge{order:5}
+    /* 状況バー：縦に積んで折り返し */
+    .sitbar{gap:8px 12px;padding:8px 12px;position:sticky;top:0;z-index:55}
+    .sitclock{margin-left:0;width:100%;justify-content:flex-start;flex-wrap:wrap}
+    .sitclock .clock{font-size:22px;min-width:96px}
+    /* メイン：縦積み（スクロールでキャンバス→設定が出る） */
+    #main{flex-direction:column;min-height:0}
+    /* パレットは横スクロールの帯に */
+    #palette{width:100%!important;flex:none;border-right:0;border-bottom:1px solid var(--line);max-height:none;overflow:visible;padding:8px 12px}
+    #palette .pal-group{margin-bottom:8px}
+    #palette #pal-people, #palette #pal-facility{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+    #palette .pal-item{flex:0 0 auto;margin-bottom:0}
+    #palette .pal-hint{display:none}
+    /* キャンバス：画面高の7割を確保し、指でスクロール／操作 */
+    #canvaswrap{flex:none;height:70vh;min-height:360px;overflow:auto;-webkit-overflow-scrolling:touch}
+    /* サイド（設定・カード・受信ログ）はキャンバスの下にフル幅で */
+    #side{width:100%!important;flex:none;border-left:0;border-top:2px solid var(--line);max-height:none}
+    .side-body{max-height:none}
+  }
   /* スタート画面 */
   #startScreen{position:fixed;inset:0;z-index:5000;background:#0d2b47;display:flex;align-items:center;justify-content:center;padding:20px}
   #startScreen .start-inner{position:relative;max-width:1100px;width:100%}
