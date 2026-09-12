@@ -268,6 +268,10 @@
       <span class="set-t">参加情報</span>
       <button class="set-leave" onclick="leaveGroup()">名前・グループを変更</button>
     </div>
+    <div class="set-row">
+      <span class="set-t">通知</span>
+      <button class="set-leave" onclick="resetNotify()">🔄 既読をリセット</button>
+    </div>
   </div>
 </div>
 
@@ -909,6 +913,19 @@ init();
     document.getElementById('overlay').classList.remove('show');
     nShowing = false;
     setTimeout(nPump, 350);
+  };
+
+  // 既読・受信ログをすべてリセット（設定パネルのボタンから呼ばれる）
+  window.resetNotify = function(){
+    if(!confirm('既読と受信ログをリセットします。最初からイベントを受信し直しますか？')) return;
+    nLastId = 0; nSaveSeen(0);
+    nQueue = []; nQueued = {}; nCurrentId = null; nShowing = false;
+    evLog = []; unread = 0; saveLog();
+    document.getElementById('overlay').classList.remove('show');
+    renderLog(); updateBadge();
+    document.getElementById('setpanel').classList.remove('show');
+    // すぐ取得し直す
+    nPoll();
   };
 
   // 起動

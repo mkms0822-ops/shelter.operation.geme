@@ -84,6 +84,8 @@
   .sw{width:28px;height:28px;border-radius:50%;border:2px solid rgba(0,0,0,.12);cursor:pointer;font-size:13px;color:var(--sub);display:flex;align-items:center;justify-content:center}
   .sw.on{border-color:var(--navy);box-shadow:0 0 0 2px rgba(18,58,94,.2)}
   .sw-green{background:#e6f4ea} .sw-pink{background:#fbe9f0} .sw-orange{background:#fdeede} .sw-blue{background:#e5eef8} .sw-none{background:#fff}
+  .set-leave{background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer;font-family:inherit}
+  .set-leave:hover{background:#f4f8fb}
 </style>
 </head>
 <body>
@@ -107,6 +109,10 @@
       <button class="sw sw-blue"   data-th="blue"   onclick="setTheme('blue')"></button>
       <button class="sw sw-none"   data-th=""       onclick="setTheme('')">×</button>
     </div>
+  </div>
+  <div class="set-row">
+    <span class="set-t">新着表示</span>
+    <button class="set-leave" onclick="resetBoard()">🔄 新着をリセット</button>
   </div>
 </div>
 
@@ -164,6 +170,13 @@ function setTheme(th){
   try{ localStorage.setItem('ui_theme', th); }catch(e){}
 }
 function toggleSettings(){ document.getElementById('setpanel').classList.toggle('show'); }
+// 新着表示（各タブのバッジ）をリセット
+function resetBoard(){
+  if(!confirm('各タブの新着マークをリセットします。よろしいですか？')) return;
+  seenCount = {}; saveSeen();
+  document.getElementById('setpanel').classList.remove('show');
+  renderTabs();
+}
 (function initUI(){
   var f='md', t='';
   try{ f=localStorage.getItem('ui_font')||'md'; }catch(e){}
