@@ -207,6 +207,36 @@
   .logitem .ltime{margin-left:auto;font-size:10px;color:var(--sub);font-weight:700}
   .logitem .lt{font-size:13px;font-weight:800;color:var(--ink);line-height:1.4}
   .logitem .ld{font-size:11.5px;color:#33404c;line-height:1.55;margin-top:3px}
+  .logitem .respbox{width:100%;margin-top:7px;border:1px solid #cfe0d8;border-radius:7px;padding:7px 9px;font-family:inherit;font-size:12px;color:var(--ink);background:#f5faf7;resize:vertical;min-height:40px;line-height:1.5}
+  .logitem .respbox:focus{outline:none;border-color:#2e7d5b}
+
+  /* ===== 総括モーダル ===== */
+  #summary-overlay{position:fixed;inset:0;background:rgba(10,25,40,.55);display:none;align-items:flex-start;justify-content:center;z-index:400;padding:20px;overflow:auto}
+  #summary-overlay.show{display:flex}
+  #summary-box{background:#fff;width:100%;max-width:800px;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.4);margin:10px 0}
+  .sum-topbar{position:sticky;top:0;background:var(--navy);color:#fff;display:flex;align-items:center;gap:8px;padding:12px 16px;border-radius:14px 14px 0 0;flex-wrap:wrap}
+  .sum-title{font-size:16px;font-weight:900}
+  .sum-btn{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:8px;padding:8px 13px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+  .sum-btn:hover{background:rgba(255,255,255,.28)}
+  .sum-btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.4)}
+  #summary-content{padding:22px 26px}
+  #summary-content h2{font-size:15px;color:var(--navy);font-weight:900;border-bottom:2px solid var(--line);padding-bottom:5px;margin:20px 0 10px}
+  #summary-content h2:first-child{margin-top:0}
+  #summary-content table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px}
+  #summary-content th,#summary-content td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  #summary-content th{background:#eef4f8;font-weight:800;color:var(--navy);white-space:nowrap}
+  #summary-content .sev-danger{border-left:4px solid var(--danger)}
+  #summary-content .sev-warn{border-left:4px solid var(--warn)}
+  #summary-content .sev-info{border-left:4px solid var(--info)}
+  #summary-content .muted2{color:var(--sub);font-size:12px}
+  #summary-content .respcell{color:#1b5e3f}
+  @media print{
+    body *{visibility:hidden}
+    #summary-overlay,#summary-overlay *{visibility:visible}
+    #summary-overlay{position:absolute;inset:0;background:#fff;padding:0;display:block}
+    #summary-box{max-width:none;box-shadow:none;margin:0}
+    .sum-topbar{display:none}
+  }
 
   /* ===== ポップアップ通知（player.htmlより移植） ===== */
   #overlay{position:fixed;inset:0;background:rgba(10,25,40,.55);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
@@ -372,6 +402,7 @@
     <button onclick="saveLayout()" class="primary big">💾 保存</button>
     <button class="big" onclick="loadLayout()">📂 開く</button>
     <button class="big" onclick="clearFloor()">🗑 クリア</button>
+    <button class="big" onclick="openSummary()" style="background:#2e7d5b">📊 総括</button>
   </header>
 
   <!-- ===== 状況設定バー ===== -->
@@ -480,6 +511,147 @@ function setTheme(th){
   try{ localStorage.setItem('ui_theme', th); }catch(e){}
 }
 function toggleSettings(){ document.getElementById('setpanel').classList.toggle('show'); }
+
+// ===================================================================
+// 総括レポート
+// ===================================================================
+var SEASON_NAME = {winter:'冬',spring:'春',summer:'夏',autumn:'秋'};
+function seasonKey(m){ if(m>=3&&m<=5)return 'spring'; if(m>=6&&m<=8)return 'summer'; if(m>=9&&m<=11)return 'autumn'; return 'winter'; }
+function sevLabel(s){ return s==='danger'?'緊急':s==='warn'?'注意':'情報'; }
+
+function buildSummaryHTML(){
+  var grp = (window.MY && MY.group) ? MY.group : '（未参加）';
+  var name = (window.MY && MY.name) ? MY.name : '';
+  var now = new Date();
+  var stamp = now.getFullYear()+'/'+pad2(now.getMonth()+1)+'/'+pad2(now.getDate())+' '+pad2(now.getHours())+':'+pad2(now.getMinutes());
+
+  // 環境設定
+  var sk = seasonKey(SIT.month);
+  var envRows =
+    '<tr><th>グループ</th><td>'+esc(grp)+(name?('（記録者：'+esc(name)+'）'):'')+'</td></tr>'+
+    '<tr><th>季節・月</th><td>'+SEASON_NAME[sk]+'（'+SIT.month+'月）</td></tr>'+
+    '<tr><th>気温</th><td>'+SIT.temp+' ℃</td></tr>'+
+    '<tr><th>湿度</th><td>'+SIT.humid+' %</td></tr>';
+
+  // 時間経過
+  var elapsed = currentElapsedSec();
+  var totalMin = SIT.startMin + Math.floor(elapsed/60);
+  var day = 1 + Math.floor(totalMin/(24*60));
+  var mn = ((totalMin%(24*60))+(24*60))%(24*60);
+  var curClock = day+'日目 '+pad2(Math.floor(mn/60))+':'+pad2(mn%60);
+  var elapsedGame = Math.floor(elapsed/60); // ゲーム内経過（分）
+  var timeRows =
+    '<tr><th>開始時刻</th><td>'+pad2(Math.floor(SIT.startMin/60))+':'+pad2(SIT.startMin%60)+'</td></tr>'+
+    '<tr><th>訓練内の現在時刻</th><td>'+curClock+'</td></tr>'+
+    '<tr><th>訓練内の経過時間</th><td>約 '+elapsedGame+' 分（'+(Math.floor(elapsedGame/60))+'時間'+(elapsedGame%60)+'分）</td></tr>'+
+    '<tr><th>時間の進む速さ</th><td>'+SIT.speed+' 倍</td></tr>';
+
+  // イベント＋対応
+  var log = window.getPlannerLog ? window.getPlannerLog() : [];
+  var evTable;
+  if(!log.length){
+    evTable = '<p class="muted2">記録されたイベントはありません。</p>';
+  } else {
+    evTable = '<table><tr><th>時刻</th><th>区分</th><th>深刻度</th><th>状況</th><th>対応・対処内容</th></tr>'+
+      log.map(function(ev){
+        return '<tr class="sev-'+(ev.severity||'info')+'">'+
+          '<td>'+esc(ev.time||'')+'</td>'+
+          '<td>'+esc(ev.tag||'')+'</td>'+
+          '<td>'+sevLabel(ev.severity)+'</td>'+
+          '<td><b>'+esc(ev.title||'')+'</b>'+(ev.detail?('<br><span class="muted2">'+esc(ev.detail)+'</span>'):'')+'</td>'+
+          '<td class="respcell">'+(ev.response?esc(ev.response):'<span class="muted2">（未記入）</span>')+'</td>'+
+        '</tr>';
+      }).join('')+'</table>';
+  }
+
+  // 共有メモ（このグループ）
+  var memoText = '';
+  try{
+    // プランナーはmemosを直接持たないため、状況共有と同様GAS由来はないのでローカル入力欄があれば拾う
+  }catch(e){}
+
+  // レイアウトの部屋一覧
+  var f = curFloor();
+  var zoneTable;
+  if(f && f.zones && f.zones.length){
+    zoneTable = '<table><tr><th>部屋名</th><th>定員</th><th>メモ</th></tr>'+
+      f.zones.map(function(z){
+        return '<tr><td>'+esc(z.name||'')+'</td><td>'+(z.cap?esc(z.cap)+' 名':'—')+'</td><td>'+(z.note?esc(z.note):'<span class="muted2">—</span>')+'</td></tr>';
+      }).join('')+'</table>';
+  } else {
+    zoneTable = '<p class="muted2">レイアウトの部屋は作成されていません。</p>';
+  }
+
+  var dangerCnt = log.filter(function(e){return e.severity==='danger';}).length;
+  var warnCnt = log.filter(function(e){return e.severity==='warn';}).length;
+  var respCnt = log.filter(function(e){return e.response && e.response.trim();}).length;
+
+  return ''+
+    '<p class="muted2">作成日時：'+stamp+'　／　Shelter Operation Trainer 訓練総括レポート</p>'+
+    '<h2>1. 環境設定</h2><table>'+envRows+'</table>'+
+    '<h2>2. 時間経過</h2><table>'+timeRows+'</table>'+
+    '<h2>3. 発生イベントと対応内容</h2>'+
+    '<p class="muted2">総イベント数：'+log.length+'件（緊急'+dangerCnt+'／注意'+warnCnt+'）　対応記入済み：'+respCnt+'件</p>'+
+    evTable+
+    '<h2>4. 避難所レイアウト（部屋一覧）</h2>'+zoneTable+
+    '<p class="muted2" style="margin-top:16px">※本レポートはプランナー画面の記録に基づいて自動生成されました。</p>';
+}
+
+function openSummary(){
+  document.getElementById('summary-content').innerHTML = buildSummaryHTML();
+  document.getElementById('summary-overlay').classList.add('show');
+}
+function closeSummary(){ document.getElementById('summary-overlay').classList.remove('show'); }
+function printSummary(){ window.print(); }
+function pdfSummary(){
+  // ブラウザの「PDFに保存」を印刷ダイアログから利用
+  alert('印刷ダイアログで「送信先」を「PDFに保存」に指定すると、総括レポートをPDFとして保存できます。');
+  window.print();
+}
+function shareSummary(){
+  var text = summaryPlainText();
+  if(navigator.share){
+    navigator.share({title:'避難所訓練 総括レポート', text:text}).catch(function(){});
+  } else {
+    // フォールバック：クリップボードにコピー
+    try{
+      navigator.clipboard.writeText(text).then(function(){ alert('総括レポートをクリップボードにコピーしました。メールやチャットに貼り付けて共有できます。'); },
+        function(){ fallbackCopy(text); });
+    }catch(e){ fallbackCopy(text); }
+  }
+}
+function fallbackCopy(text){
+  var ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); alert('総括レポートをクリップボードにコピーしました。'); }catch(e){ alert('コピーできませんでした。'); }
+  document.body.removeChild(ta);
+}
+// 共有用プレーンテキスト
+function summaryPlainText(){
+  var grp = (window.MY && MY.group) ? MY.group : '（未参加）';
+  var sk = seasonKey(SIT.month);
+  var elapsed = currentElapsedSec();
+  var totalMin = SIT.startMin + Math.floor(elapsed/60);
+  var day = 1 + Math.floor(totalMin/(24*60));
+  var mn = ((totalMin%(24*60))+(24*60))%(24*60);
+  var log = window.getPlannerLog ? window.getPlannerLog() : [];
+  var L=[];
+  L.push('■避難所訓練 総括レポート');
+  L.push('グループ：'+grp);
+  L.push('環境：'+SEASON_NAME[sk]+'（'+SIT.month+'月） '+SIT.temp+'℃ 湿度'+SIT.humid+'%');
+  L.push('訓練内時刻：'+day+'日目 '+pad2(Math.floor(mn/60))+':'+pad2(mn%60)+'（開始 '+pad2(Math.floor(SIT.startMin/60))+':'+pad2(SIT.startMin%60)+'／'+SIT.speed+'倍）');
+  L.push('');
+  L.push('【発生イベントと対応】('+log.length+'件)');
+  log.forEach(function(ev,i){
+    L.push((i+1)+'. ['+sevLabel(ev.severity)+'/'+(ev.tag||'')+'] '+(ev.title||''));
+    L.push('   対応：'+(ev.response&&ev.response.trim()?ev.response:'（未記入）'));
+  });
+  var f=curFloor();
+  if(f&&f.zones&&f.zones.length){
+    L.push(''); L.push('【レイアウト部屋】');
+    f.zones.forEach(function(z){ L.push('・'+(z.name||'')+(z.cap?('（定員'+z.cap+'）'):'')+(z.note?(' '+z.note):'')); });
+  }
+  return L.join('\n');
+}
 
 // ===================================================================
 // 状況設定バー（月・気温・湿度・時刻の自動経過）／グループ共有（方式A）
@@ -806,11 +978,16 @@ function zoneEl(z){
       (z.cap?'<span class="zcap">定員'+z.cap+'</span>':'')+
       '<span class="zdel" onclick="delZone(event,\''+z.id+'\')">🗑</span></div>'+
     '<div class="zbody"><textarea placeholder="メモ（役割・注意点など）" oninput="zoneNote(\''+z.id+'\',this.value)">'+esc(z.note||'')+'</textarea><div class="zresize" style="background:linear-gradient(135deg,transparent 50%,'+col+' 50%)"></div></div>';
-  // 選択
-  el.addEventListener('mousedown',function(e){ if(e.target.tagName!=='TEXTAREA'){ selectZone(z.id); } });
+  // 選択（テキスト編集・リサイズハンドルは除外）
+  el.addEventListener('mousedown',function(e){
+    if(e.target.tagName==='TEXTAREA') return;
+    if(e.target.classList && (e.target.classList.contains('zresize')||e.target.classList.contains('zname')||e.target.classList.contains('zdel'))) return;
+    selectZone(z.id);
+  });
   // ヘッダドラッグで移動
   var head=el.querySelector('.zhead');
   head.addEventListener('mousedown',function(e){ startDragZone(e,z,el); });
+  head.addEventListener('touchstart',function(e){ if(e.target.classList&&(e.target.classList.contains('zname')||e.target.classList.contains('zdel')))return; startDragZone(e,z,el); },{passive:false});
   // リサイズ
   el.querySelector('.zresize').addEventListener('mousedown',function(e){ startResizeZone(e,z,el); });
   el.querySelector('.zresize').addEventListener('touchstart',function(e){ startResizeZone(e,z,el); },{passive:false});
@@ -841,11 +1018,23 @@ function zoneNameCommit(e,id){
 }
 
 function startDragZone(e,z,el){
-  e.preventDefault();
-  var sx=e.clientX, sy=e.clientY, ox=z.x, oy=z.y;
-  function mv(ev){ z.x=Math.max(0,ox+ev.clientX-sx); z.y=Math.max(0,oy+ev.clientY-sy); el.style.left=z.x+'px'; el.style.top=z.y+'px'; }
-  function up(){ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); }
+  if(e.type==='mousedown') e.preventDefault();
+  var pt=e.touches?e.touches[0]:e;
+  var sx=pt.clientX, sy=pt.clientY, ox=z.x, oy=z.y;
+  function mv(ev){
+    var p=ev.touches?ev.touches[0]:ev;
+    z.x=Math.max(0,ox+p.clientX-sx); z.y=Math.max(0,oy+p.clientY-sy);
+    el.style.left=z.x+'px'; el.style.top=z.y+'px';
+    if(ev.cancelable && ev.touches) ev.preventDefault();
+  }
+  function up(){
+    document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up);
+    document.removeEventListener('touchmove',mv); document.removeEventListener('touchend',up);
+    document.removeEventListener('touchcancel',up);
+  }
   document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+  document.addEventListener('touchmove',mv,{passive:false}); document.addEventListener('touchend',up);
+  document.addEventListener('touchcancel',up);
 }
 function startResizeZone(e,z,el){
   e.preventDefault(); e.stopPropagation();
@@ -861,9 +1050,12 @@ function startResizeZone(e,z,el){
   function up(){
     document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up);
     document.removeEventListener('touchmove',mv); document.removeEventListener('touchend',up);
+    document.removeEventListener('touchcancel',up);
+    renderCanvas(); // DOMとイベントを張り直して、次回以降もリサイズできるようにする
   }
   document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
   document.addEventListener('touchmove',mv,{passive:false}); document.addEventListener('touchend',up);
+  document.addEventListener('touchcancel',up);
 }
 
 // アイテム
@@ -1086,16 +1278,27 @@ init();
       area.innerHTML = '<div class="empty">まだイベントは届いていません。<br>ファシリテーターがイベントを送信すると、ここに履歴が残ります。</div>';
       return;
     }
-    area.innerHTML = evLog.slice().reverse().map(function(ev){
+    area.innerHTML = evLog.slice().reverse().map(function(ev,ri){
       if(!ev) return '';
+      var idx = evLog.length-1-ri; // 実配列でのindex
       var sev = ev.severity;
       var cls = sev==='danger'?'danger':sev==='warn'?'warn':'';
       return '<div class="logitem '+cls+'"><div class="lh"><span class="ltag">'+nEsc(ev.tag||'状況')+'</span>'+
         '<span class="ltime">'+nEsc(ev.time||'')+'</span></div>'+
         '<div class="lt">'+nEsc(ev.title||ev.t||'')+'</div>'+
-        ((ev.detail||ev.d)?'<div class="ld">'+nEsc(ev.detail||ev.d)+'</div>':'')+'</div>';
+        ((ev.detail||ev.d)?'<div class="ld">'+nEsc(ev.detail||ev.d)+'</div>':'')+
+        '<textarea class="respbox" placeholder="このイベントへの対応・対処内容を記入" '+
+          'oninput="plannerSetResp('+idx+',this.value)">'+nEsc(ev.response||'')+'</textarea>'+
+        '</div>';
     }).join('');
   }
+
+  // 対応メモの保存（イベントごと）
+  window.plannerSetResp = function(idx, v){
+    if(evLog[idx]){ evLog[idx].response = v; saveLog(); }
+  };
+  // 総括用にevLogとメタを外部公開
+  window.getPlannerLog = function(){ return evLog.slice(); };
 
   function updateBadge(){
     var b = document.getElementById('log-badge');
@@ -1107,7 +1310,8 @@ init();
   function addToLog(ev){
     evLog.push({
       id: ev.id, time: ev.time||'', tag: ev.tag||'状況',
-      title: ev.title||ev.t||'', detail: ev.detail||ev.d||'', severity: ev.severity||'info'
+      title: ev.title||ev.t||'', detail: ev.detail||ev.d||'', severity: ev.severity||'info',
+      response: ''
     });
     unread++;
     saveLog();
@@ -1248,6 +1452,21 @@ init();
 </div>
 
 <audio id="ding" preload="auto"></audio>
+
+<!-- ===== 総括モーダル ===== -->
+<div id="summary-overlay" onclick="if(event.target===this)closeSummary()">
+  <div id="summary-box">
+    <div class="sum-topbar">
+      <span class="sum-title">📊 訓練総括レポート</span>
+      <span style="flex:1"></span>
+      <button class="sum-btn" onclick="printSummary()">🖨 印刷</button>
+      <button class="sum-btn" onclick="pdfSummary()">📄 PDF</button>
+      <button class="sum-btn" onclick="shareSummary()">🔗 共有</button>
+      <button class="sum-btn ghost" onclick="closeSummary()">✕ 閉じる</button>
+    </div>
+    <div id="summary-content"></div>
+  </div>
+</div>
 
 </body>
 </html>

@@ -115,6 +115,13 @@
     .memo textarea{min-height:74px}
     .evitem .et{font-size:15px}
   }
+  /* ===== 印刷用 ===== */
+  @media print{
+    header, .tabs, #setpanel, #dbg{display:none!important}
+    main{max-width:none;padding:0}
+    body{background:#fff}
+    .memo textarea{border:1px solid #ccc}
+  }
 </style>
 </head>
 <body>
@@ -150,6 +157,9 @@
     <span class="logo">📋</span>
     <h1>イベント掲示板<small>SHELTER BULLETIN BOARD</small></h1>
     <span class="sp"></span>
+    <button class="hbtn" onclick="printBoard()" title="印刷">🖨</button>
+    <button class="hbtn" onclick="pdfBoard()" title="PDFで保存">📄</button>
+    <button class="hbtn" onclick="shareBoard()" title="共有">🔗</button>
     <button class="hbtn" onclick="toggleSettings()" title="表示設定">⚙️</button>
     <div class="conn" id="conn"><span class="led"></span><span id="conntxt">接続中…</span></div>
   </header>
@@ -200,6 +210,49 @@ function setTheme(th){
   try{ localStorage.setItem('ui_theme', th); }catch(e){}
 }
 function toggleSettings(){ document.getElementById('setpanel').classList.toggle('show'); }
+
+// ===== 出力（印刷・PDF・共有） =====
+function printBoard(){ window.print(); }
+function pdfBoard(){
+  alert('印刷ダイアログで「送信先」を「PDFに保存」に指定すると、この掲示板をPDFとして保存できます。');
+  window.print();
+}
+function boardPlainText(){
+  var tabLabel = curTab===ALL ? '全体' : curTab;
+  var L=[];
+  L.push('■避難所イベント掲示板：'+tabLabel);
+  var s = situations[curTab];
+  if(s){
+    var el=(s.baseElapsedSec||0)+((s.running&&s.startedAt)?(Date.now()-s.startedAt)/1000*(s.speed||1):0);
+    var tm=(s.startMin||0)+Math.floor(el/60); var d=1+Math.floor(tm/(24*60)); var mn=((tm%(24*60))+(24*60))%(24*60);
+    L.push('状況：'+seasonOf(s.month)+'（'+s.month+'月） '+s.temp+'℃ 湿度'+s.humid+'%　'+d+'日目 '+('0'+Math.floor(mn/60)).slice(-2)+':'+('0'+(mn%60)).slice(-2));
+  }
+  if(curTab!==ALL && memos[curTab] && memos[curTab].text){
+    L.push(''); L.push('【メモ】'); L.push(memos[curTab].text);
+  }
+  var list=eventsForTab(curTab).slice().reverse();
+  L.push(''); L.push('【届いたイベント】('+list.length+'件)');
+  list.forEach(function(ev,i){
+    var g=(ev.group&&ev.group!==ALL)?ev.group:'全体';
+    L.push((i+1)+'. ['+g+'/'+(ev.tag||'')+'] '+(ev.title||'')+'　'+(ev.time||''));
+    if(ev.detail) L.push('   '+ev.detail);
+  });
+  return L.join('\n');
+}
+function shareBoard(){
+  var text=boardPlainText();
+  if(navigator.share){
+    navigator.share({title:'避難所イベント掲示板', text:text}).catch(function(){});
+  } else {
+    try{ navigator.clipboard.writeText(text).then(function(){ alert('掲示板の内容をクリップボードにコピーしました。'); }, function(){ boardFallbackCopy(text); }); }
+    catch(e){ boardFallbackCopy(text); }
+  }
+}
+function boardFallbackCopy(text){
+  var ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); alert('掲示板の内容をクリップボードにコピーしました。'); }catch(e){ alert('コピーできませんでした。'); }
+  document.body.removeChild(ta);
+}
 // 新着表示（各タブのバッジ）をリセット
 function resetBoard(){
   if(!confirm('各タブの新着マークをリセットします。よろしいですか？')) return;
