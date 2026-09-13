@@ -256,11 +256,27 @@
   #summary-content .muted2{color:var(--sub);font-size:12px}
   #summary-content .respcell{color:#1b5e3f}
   @media print{
+    body{overflow:visible!important;height:auto!important}
     body *{visibility:hidden}
     #summary-overlay,#summary-overlay *{visibility:visible}
-    #summary-overlay{position:absolute;inset:0;background:#fff;padding:0;display:block}
-    #summary-box{max-width:none;box-shadow:none;margin:0}
-    .sum-topbar{display:none}
+    #summary-overlay{
+      position:static!important; display:block!important;
+      inset:auto!important; padding:0!important; margin:0!important;
+      background:#fff!important; overflow:visible!important; height:auto!important;
+    }
+    #summary-box{
+      max-width:none!important; width:100%!important; box-shadow:none!important;
+      margin:0!important; border-radius:0!important; overflow:visible!important; height:auto!important;
+    }
+    #summary-content, .sum-archive{overflow:visible!important; height:auto!important}
+    .sum-topbar{display:none!important}
+    #summary-overlay .lv-canvas-wrap,
+    #summary-overlay #sum-layout-img{overflow:visible!important; max-height:none!important; height:auto!important}
+    #summary-overlay img{max-width:100%!important; height:auto!important}
+    #summary-overlay table{page-break-inside:auto}
+    #summary-overlay tr{page-break-inside:avoid}
+    #summary-overlay h2{page-break-after:avoid}
+    @page{ margin:12mm; }
   }
 
   /* ===== ポップアップ通知（player.htmlより移植） ===== */
