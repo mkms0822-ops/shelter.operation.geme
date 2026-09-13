@@ -80,6 +80,9 @@
   /* レイアウト閲覧 */
   .layoutview{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:16px}
   .layoutview .lv-h{font-size:12px;font-weight:800;color:var(--navy);margin-bottom:8px}
+  .lv-floors{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .lv-ftab{border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:800;color:var(--sub);cursor:pointer;font-family:inherit}
+  .lv-ftab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
   .lv-canvas-wrap{overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px;background:#eef4f8}
   .lv-canvas{position:relative;background:#eef4f8;background-image:linear-gradient(#d7e3ec 1px,transparent 1px),linear-gradient(90deg,#d7e3ec 1px,transparent 1px);background-size:20px 20px;margin:0 auto}
   .tallybar .tchip.fac{background:#eef4f8;color:#33404c}
@@ -380,21 +383,16 @@ function seasonOf(m){
 var ZONE_COLORS = { steel:'#3f6f8f', green:'#3f9e63', pink:'#c25a86', orange:'#c9832f', blue:'#3f77b3', purple:'#8a5cc4' };
 function zoneColorB(c){ return ZONE_COLORS[c] || ZONE_COLORS.steel; }
 
-// レイアウトを読み取り専用で描画（縮小表示）
-function layoutHtml(group){
-  var L = layouts[group];
-  if(!L || !L.floors || !L.floors.length) return '';
-  var floor = L.floors[L.cur||0] || L.floors[0];
-  if(!floor) return '';
+// 掲示板で表示中のフロアindex（グループごと）
+var boardFloorIdx = {};
+
+// 1フロア分の描画
+function floorCanvasHtml(floor){
   var zones = floor.zones||[];
   var items = floor.items||[];
-  if(!zones.length && !items.length) return '';
-
-  // キャンバスは1400x1000想定。掲示板幅に合わせて縮小
   var CW=1400, CH=1000, dispW=700;
   var scale = dispW/CW;
   var dispH = Math.round(CH*scale);
-
   var inner='';
   zones.forEach(function(z){
     var col=zoneColorB(z.color||'steel');
@@ -410,9 +408,42 @@ function layoutHtml(group){
     inner+='<div style="position:absolute;left:'+x+'px;top:'+y+'px;background:#fff;border:1px solid #cfd8e0;border-radius:12px;padding:2px 7px;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.12)">'+
       (it.ic?it.ic+' ':'')+esc(it.t||'')+(it.cap&&it.count?(' '+esc(it.count)+'人'):'')+'</div>';
   });
+  return '<div class="lv-canvas-wrap"><div class="lv-canvas" style="width:'+dispW+'px;height:'+dispH+'px">'+inner+'</div></div>';
+}
 
-  return '<div class="layoutview"><div class="lv-h">🗺️ 避難所レイアウト（閲覧専用）'+(floor.name?(' ／ '+esc(floor.name)):'')+'</div>'+
-    '<div class="lv-canvas-wrap"><div class="lv-canvas" style="width:'+dispW+'px;height:'+dispH+'px">'+inner+'</div></div></div>';
+// レイアウトを読み取り専用で描画（複数階タブ対応）
+function layoutHtml(group){
+  var L = layouts[group];
+  if(!L || !L.floors || !L.floors.length) return '';
+  var floors = L.floors;
+  // 何か配置があるフロアが1つでもあるか
+  var hasAny = floors.some(function(f){ return (f.zones&&f.zones.length)||(f.items&&f.items.length); });
+  if(!hasAny) return '';
+
+  // 表示中フロア（未設定なら保存時のcur、なければ0）
+  var idx = boardFloorIdx[group];
+  if(idx==null) idx = (L.cur!=null?L.cur:0);
+  if(idx>=floors.length) idx=0;
+  boardFloorIdx[group]=idx;
+
+  // フロアタブ（複数階のときだけ）
+  var tabs='';
+  if(floors.length>1){
+    tabs = '<div class="lv-floors">'+floors.map(function(f,i){
+      return '<button class="lv-ftab'+(i===idx?' on':'')+'" onclick="boardSelectFloor(\''+esc(group).replace(/'/g,"\\'")+'\','+i+')">'+esc(f.name||('フロア'+(i+1)))+'</button>';
+    }).join('')+'</div>';
+  }
+
+  var floor = floors[idx];
+  var fname = floor.name ? (' ／ '+esc(floor.name)) : '';
+  return '<div class="layoutview"><div class="lv-h">🗺️ 避難所レイアウト（閲覧専用）'+fname+'</div>'+
+    tabs + floorCanvasHtml(floor) + '</div>';
+}
+
+// フロア切り替え（掲示板・閲覧のみ）
+function boardSelectFloor(group, i){
+  boardFloorIdx[group]=i;
+  renderBody();
 }
 // 状況（月・気温・湿度・時刻）のHTMLを作る。runningなら現在時刻を算出。
 function situationHtml(group){
