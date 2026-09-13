@@ -479,8 +479,29 @@ function situationHtml(group){
     '<div class="sc-item">💧 '+s.humid+'%</div>'+
     '<div class="sc-clock" data-group="'+esc(group)+'">'+day+'日目 '+clock+'</div>'+
     runDot+'</div>';
-  html += tallyHtml(s.tally);
+  html += tallyHtml(computeTallyFor(group) || s.tally);
   return html;
+}
+// レイアウトデータ（layouts）から集計を再計算（tallyより正確）
+function computeTallyFor(group){
+  var L = layouts[group];
+  if(!L || !L.floors || !L.floors.length) return null;
+  var people={}, facility={}, total=0, capacity=0, rooms=0, roomList=[];
+  L.floors.forEach(function(f){
+    (f.items||[]).forEach(function(it){
+      if(it.cap){
+        var n=parseInt(it.count||0,10)||0;
+        people[it.t]=(people[it.t]||0)+n; total+=n;
+      } else {
+        facility[it.t]=(facility[it.t]||0)+1;
+      }
+    });
+    (f.zones||[]).forEach(function(z){
+      rooms++; var c=parseInt(z.cap||0,10)||0; capacity+=c;
+      roomList.push({name:z.name||'部屋', cap:c});
+    });
+  });
+  return {people:people, facility:facility, total:total, capacity:capacity, rooms:rooms, roomList:roomList};
 }
 // 集計（人数・設備）のチップ表示
 function tallyHtml(t){

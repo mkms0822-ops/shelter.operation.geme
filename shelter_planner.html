@@ -256,26 +256,31 @@
   #summary-content .muted2{color:var(--sub);font-size:12px}
   #summary-content .respcell{color:#1b5e3f}
   @media print{
-    body{overflow:visible!important;height:auto!important}
-    body *{visibility:hidden}
-    #summary-overlay,#summary-overlay *{visibility:visible}
-    #summary-overlay{
+    /* 総括印刷モード：#app等を完全に消し、空白ページを防ぐ */
+    body.printing-summary #app,
+    body.printing-summary #palette,
+    body.printing-summary #overlay,
+    body.printing-summary #setpanel,
+    body.printing-summary #startScreen{ display:none!important; }
+    body.printing-summary{ overflow:visible!important; height:auto!important; background:#fff!important; }
+    body.printing-summary #summary-overlay{
       position:static!important; display:block!important;
       inset:auto!important; padding:0!important; margin:0!important;
       background:#fff!important; overflow:visible!important; height:auto!important;
     }
-    #summary-box{
+    body.printing-summary #summary-box{
       max-width:none!important; width:100%!important; box-shadow:none!important;
       margin:0!important; border-radius:0!important; overflow:visible!important; height:auto!important;
     }
-    #summary-content, .sum-archive{overflow:visible!important; height:auto!important}
-    .sum-topbar{display:none!important}
-    #summary-overlay .lv-canvas-wrap,
-    #summary-overlay #sum-layout-img{overflow:visible!important; max-height:none!important; height:auto!important}
-    #summary-overlay img{max-width:100%!important; height:auto!important}
-    #summary-overlay table{page-break-inside:auto}
-    #summary-overlay tr{page-break-inside:avoid}
-    #summary-overlay h2{page-break-after:avoid}
+    body.printing-summary #summary-content,
+    body.printing-summary .sum-archive{overflow:visible!important; height:auto!important}
+    body.printing-summary .sum-topbar{display:none!important}
+    body.printing-summary .lv-canvas-wrap,
+    body.printing-summary #sum-layout-img{overflow:visible!important; max-height:none!important; height:auto!important}
+    body.printing-summary #summary-overlay img{max-width:100%!important; height:auto!important}
+    body.printing-summary #summary-overlay table{page-break-inside:auto}
+    body.printing-summary #summary-overlay tr{page-break-inside:avoid}
+    body.printing-summary #summary-overlay h2{page-break-after:avoid}
     @page{ margin:12mm; }
   }
 
@@ -723,11 +728,17 @@ function captureLayoutImage(){
   });
 }
 function closeSummary(){ document.getElementById('summary-overlay').classList.remove('show'); }
-function printSummary(){ window.print(); }
+function doPrintSummary(){
+  document.body.classList.add('printing-summary');
+  // 印刷後にクラスを外す
+  function cleanup(){ document.body.classList.remove('printing-summary'); window.removeEventListener('afterprint', cleanup); }
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(function(){ window.print(); setTimeout(cleanup, 1000); }, 60);
+}
+function printSummary(){ doPrintSummary(); }
 function pdfSummary(){
-  // ブラウザの「PDFに保存」を印刷ダイアログから利用
   alert('印刷ダイアログで「送信先」を「PDFに保存」に指定すると、総括レポートをPDFとして保存できます。');
-  window.print();
+  doPrintSummary();
 }
 function shareSummary(){
   var text = summaryPlainText();
