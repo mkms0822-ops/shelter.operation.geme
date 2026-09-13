@@ -76,6 +76,12 @@
   .tallybar .tchip{font-size:11.5px;font-weight:800;color:#33404c;background:#fff;border:1px solid var(--line);border-radius:14px;padding:3px 10px}
   .tallybar .tchip.total{background:var(--navy);color:#fff;border-color:var(--navy)}
   .tallybar .tchip.cap{background:#eaf5ef;color:#1b5e3f;border-color:#bfe0cd}
+  .tallybar .tchip.room{background:#eef4f8;color:#123a5e;border-color:#cfe0ec}
+  /* レイアウト閲覧 */
+  .layoutview{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:16px}
+  .layoutview .lv-h{font-size:12px;font-weight:800;color:var(--navy);margin-bottom:8px}
+  .lv-canvas-wrap{overflow:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px;background:#eef4f8}
+  .lv-canvas{position:relative;background:#eef4f8;background-image:linear-gradient(#d7e3ec 1px,transparent 1px),linear-gradient(90deg,#d7e3ec 1px,transparent 1px);background-size:20px 20px;margin:0 auto}
   .tallybar .tchip.fac{background:#eef4f8;color:#33404c}
   .sitrow{display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
   .sitrow-g{font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;min-width:110px}
@@ -189,6 +195,7 @@ var groups = [];          // [{name,color}]
 var eventsAll = [];       // 全イベント
 var memos = {};           // {group: {text, updated}}
 var situations = {};      // {group: {month,temp,humid,startMin,speed,startedAt,running,baseElapsedSec}}
+var layouts = {};         // {group: {floors, cur}}
 var curTab = ALL;         // 選択中タブ（'all' or グループ名）
 var seenCount = {};       // タブごとに既読件数（新着バッジ用）
 var editing = false;      // メモ編集中はメモ欄を上書きしない
@@ -295,6 +302,7 @@ function handle(res){
   groups = (res && res.groups) ? res.groups : groups;
   eventsAll = (res && res.events) ? res.events : [];
   situations = (res && res.situations) ? res.situations : {};
+  layouts = (res && res.layouts) ? res.layouts : {};
   // メモ編集中はサーバーのメモで上書きしない（自分の入力を守る）
   if(!editing){ memos = (res && res.memos) ? res.memos : {}; }
   dbg('接続OK / イベント'+eventsAll.length+'件 / '+ (groups.length) +'グループ');
@@ -368,6 +376,44 @@ function seasonOf(m){
   if(m>=9&&m<=11) return '🍂 秋';
   return '❄️ 冬';
 }
+// 部屋の色（プランナーと同じ定義）
+var ZONE_COLORS = { steel:'#3f6f8f', green:'#3f9e63', pink:'#c25a86', orange:'#c9832f', blue:'#3f77b3', purple:'#8a5cc4' };
+function zoneColorB(c){ return ZONE_COLORS[c] || ZONE_COLORS.steel; }
+
+// レイアウトを読み取り専用で描画（縮小表示）
+function layoutHtml(group){
+  var L = layouts[group];
+  if(!L || !L.floors || !L.floors.length) return '';
+  var floor = L.floors[L.cur||0] || L.floors[0];
+  if(!floor) return '';
+  var zones = floor.zones||[];
+  var items = floor.items||[];
+  if(!zones.length && !items.length) return '';
+
+  // キャンバスは1400x1000想定。掲示板幅に合わせて縮小
+  var CW=1400, CH=1000, dispW=700;
+  var scale = dispW/CW;
+  var dispH = Math.round(CH*scale);
+
+  var inner='';
+  zones.forEach(function(z){
+    var col=zoneColorB(z.color||'steel');
+    var x=Math.round((z.x||0)*scale), y=Math.round((z.y||0)*scale), w=Math.round((z.w||120)*scale), h=Math.round((z.h||90)*scale);
+    inner+='<div style="position:absolute;left:'+x+'px;top:'+y+'px;width:'+w+'px;height:'+h+'px;'+
+      'border:2px solid '+col+';border-radius:5px;background:rgba(255,255,255,.75);overflow:hidden;font-size:10px">'+
+      '<div style="background:'+col+';color:#fff;font-weight:800;padding:1px 4px;font-size:10px;white-space:nowrap;overflow:hidden">'+esc(z.name||'部屋')+(z.cap?('（'+esc(z.cap)+'）'):'')+'</div>'+
+      (z.note?'<div style="padding:2px 4px;color:#33404c;font-size:9px;line-height:1.3">'+esc(z.note)+'</div>':'')+
+      '</div>';
+  });
+  items.forEach(function(it){
+    var x=Math.round((it.x||0)*scale), y=Math.round((it.y||0)*scale);
+    inner+='<div style="position:absolute;left:'+x+'px;top:'+y+'px;background:#fff;border:1px solid #cfd8e0;border-radius:12px;padding:2px 7px;font-size:10px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.12)">'+
+      (it.ic?it.ic+' ':'')+esc(it.t||'')+(it.cap&&it.count?(' '+esc(it.count)+'人'):'')+'</div>';
+  });
+
+  return '<div class="layoutview"><div class="lv-h">🗺️ 避難所レイアウト（閲覧専用）'+(floor.name?(' ／ '+esc(floor.name)):'')+'</div>'+
+    '<div class="lv-canvas-wrap"><div class="lv-canvas" style="width:'+dispW+'px;height:'+dispH+'px">'+inner+'</div></div></div>';
+}
 // 状況（月・気温・湿度・時刻）のHTMLを作る。runningなら現在時刻を算出。
 function situationHtml(group){
   var s = situations[group];
@@ -395,7 +441,7 @@ function tallyHtml(t){
   chips.push('<span class="tchip total">総人数 '+(t.total||0)+'人</span>');
   if(t.capacity>0) chips.push('<span class="tchip cap">収容定員 '+t.capacity+'人</span>');
   if(t.people){ Object.keys(t.people).forEach(function(k){ if(t.people[k]>0) chips.push('<span class="tchip">'+esc(k)+' '+t.people[k]+'</span>'); }); }
-  if(t.rooms>0) chips.push('<span class="tchip fac">部屋 '+t.rooms+'室</span>');
+  if(t.roomList && t.roomList.length){ t.roomList.forEach(function(r){ chips.push('<span class="tchip room">'+esc(r.name||'部屋')+(r.cap?(' '+r.cap+'人'):'')+'</span>'); }); }
   if(t.facility){ Object.keys(t.facility).forEach(function(k){ chips.push('<span class="tchip fac">'+esc(k)+' ×'+t.facility[k]+'</span>'); }); }
   if(chips.length<=1 && !t.total && !t.capacity) return '';
   return '<div class="tallybar">'+chips.join('')+'</div>';
@@ -428,7 +474,9 @@ function renderBody(){
       '<span class="mstat" id="memoStat">'+(m.updated?('最終更新 '+esc(m.updated)):'')+'</span></div></div>';
   }
 
-  main.innerHTML = sitHtml + memoHtml + '<div id="evholder">'+eventsListHtml()+'</div>';
+  var layoutView = curTab===ALL ? '' : layoutHtml(curTab);
+
+  main.innerHTML = sitHtml + layoutView + memoHtml + '<div id="evholder">'+eventsListHtml()+'</div>';
 }
 
 // 進行中の時計を毎秒更新（表示だけ差し替え）
