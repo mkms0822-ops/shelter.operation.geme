@@ -207,8 +207,13 @@
   .logitem .ltime{margin-left:auto;font-size:10px;color:var(--sub);font-weight:700}
   .logitem .lt{font-size:13px;font-weight:800;color:var(--ink);line-height:1.4}
   .logitem .ld{font-size:11.5px;color:#33404c;line-height:1.55;margin-top:3px}
-  .logitem .respbox{width:100%;margin-top:7px;border:1px solid #cfe0d8;border-radius:7px;padding:7px 9px;font-family:inherit;font-size:12px;color:var(--ink);background:#f5faf7;resize:vertical;min-height:40px;line-height:1.5}
+  .logitem .respbox{width:100%;margin-top:7px;border:1px solid #cfe0d8;border-radius:7px;padding:7px 9px;font-family:inherit;font-size:12px;color:var(--ink);background:#f5faf7;resize:vertical;min-height:60px;line-height:1.5}
   .logitem .respbox:focus{outline:none;border-color:#2e7d5b}
+  .logitem .litop{cursor:pointer}
+  .logitem .lexp{margin-left:auto;font-size:10.5px;font-weight:800;color:#2e7d5b;background:#eaf5ef;border-radius:9px;padding:2px 9px}
+  .logitem .respmark{font-size:9.5px;font-weight:800;color:#fff;background:#2e7d5b;border-radius:9px;padding:1px 8px}
+  .logitem .resplabel{display:block;font-size:10.5px;font-weight:800;color:#2e7d5b;margin:8px 0 3px}
+  .logitem .respwrap{border-top:1px dashed var(--line);margin-top:6px}
 
   /* ===== 総括モーダル ===== */
   #summary-overlay{position:fixed;inset:0;background:rgba(10,25,40,.55);display:none;align-items:flex-start;justify-content:center;z-index:400;padding:20px;overflow:auto}
@@ -1040,18 +1045,20 @@ function startResizeZone(e,z,el){
   e.preventDefault(); e.stopPropagation();
   var pt=e.touches?e.touches[0]:e;
   var sx=pt.clientX, sy=pt.clientY, ow=z.w, oh=z.h;
+  var moved=false;
   function mv(ev){
     var p=ev.touches?ev.touches[0]:ev;
     z.w=Math.max(60, ow + p.clientX - sx);
     z.h=Math.max(44, oh + p.clientY - sy);
     el.style.width=z.w+'px'; el.style.height=z.h+'px';
+    moved=true;
     if(ev.cancelable) ev.preventDefault();
   }
   function up(){
     document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up);
     document.removeEventListener('touchmove',mv); document.removeEventListener('touchend',up);
     document.removeEventListener('touchcancel',up);
-    renderCanvas(); // DOMとイベントを張り直して、次回以降もリサイズできるようにする
+    // DOMは作り直さない（同じ要素を使い続けることで何度でもリサイズ可能）
   }
   document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
   document.addEventListener('touchmove',mv,{passive:false}); document.addEventListener('touchend',up);
@@ -1280,15 +1287,24 @@ init();
     }
     area.innerHTML = evLog.slice().reverse().map(function(ev,ri){
       if(!ev) return '';
-      var idx = evLog.length-1-ri; // 実配列でのindex
+      var idx = evLog.length-1-ri;
       var sev = ev.severity;
       var cls = sev==='danger'?'danger':sev==='warn'?'warn':'';
-      return '<div class="logitem '+cls+'"><div class="lh"><span class="ltag">'+nEsc(ev.tag||'状況')+'</span>'+
-        '<span class="ltime">'+nEsc(ev.time||'')+'</span></div>'+
-        '<div class="lt">'+nEsc(ev.title||ev.t||'')+'</div>'+
-        ((ev.detail||ev.d)?'<div class="ld">'+nEsc(ev.detail||ev.d)+'</div>':'')+
-        '<textarea class="respbox" placeholder="このイベントへの対応・対処内容を記入" '+
-          'oninput="plannerSetResp('+idx+',this.value)">'+nEsc(ev.response||'')+'</textarea>'+
+      var hasResp = ev.response && ev.response.trim();
+      return '<div class="logitem '+cls+'">'+
+        '<div class="litop" onclick="plannerToggleResp('+idx+')">'+
+          '<div class="lh"><span class="ltag">'+nEsc(ev.tag||'状況')+'</span>'+
+          '<span class="ltime">'+nEsc(ev.time||'')+'</span>'+
+          (hasResp?'<span class="respmark">✎対応済</span>':'')+
+          '<span class="lexp" id="lexp'+idx+'">▼ 対応方法</span></div>'+
+          '<div class="lt">'+nEsc(ev.title||ev.t||'')+'</div>'+
+          ((ev.detail||ev.d)?'<div class="ld">'+nEsc(ev.detail||ev.d)+'</div>':'')+
+        '</div>'+
+        '<div class="respwrap" id="respwrap'+idx+'" style="display:'+(hasResp?'block':'none')+'">'+
+          '<label class="resplabel">対応方法（自由記載）</label>'+
+          '<textarea class="respbox" placeholder="このイベントにどう対応したか、方針・判断・結果などを自由に記入" '+
+            'oninput="plannerSetResp('+idx+',this.value)">'+nEsc(ev.response||'')+'</textarea>'+
+        '</div>'+
         '</div>';
     }).join('');
   }
@@ -1297,7 +1313,17 @@ init();
   window.plannerSetResp = function(idx, v){
     if(evLog[idx]){ evLog[idx].response = v; saveLog(); }
   };
-  // 総括用にevLogとメタを外部公開
+  // 対応方法の記入欄を開閉（イベントをクリックで開く）
+  window.plannerToggleResp = function(idx){
+    var w=document.getElementById('respwrap'+idx);
+    var e=document.getElementById('lexp'+idx);
+    if(!w) return;
+    var open = w.style.display!=='none';
+    w.style.display = open ? 'none' : 'block';
+    if(e) e.textContent = open ? '▼ 対応方法' : '▲ 閉じる';
+    if(!open){ var ta=w.querySelector('textarea'); if(ta) setTimeout(function(){ta.focus();},0); }
+  };
+  // 総括用にevLogを外部公開
   window.getPlannerLog = function(){ return evLog.slice(); };
 
   function updateBadge(){
