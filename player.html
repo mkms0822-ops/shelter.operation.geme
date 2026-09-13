@@ -175,6 +175,7 @@
     <span class="logo">📋</span>
     <h1>イベント掲示板<small>SHELTER BULLETIN BOARD</small></h1>
     <span class="sp"></span>
+    <button class="hbtn" onclick="boardRefresh()" title="今すぐ反映">🔄</button>
     <button class="hbtn" onclick="printBoard()" title="印刷">🖨</button>
     <button class="hbtn" onclick="pdfBoard()" title="PDFで保存">📄</button>
     <button class="hbtn" onclick="shareBoard()" title="共有">🔗</button>
@@ -229,6 +230,25 @@ function setTheme(th){
   try{ localStorage.setItem('ui_theme', th); }catch(e){}
 }
 function toggleSettings(){ document.getElementById('setpanel').classList.toggle('show'); }
+
+// 簡易トースト
+function boardToast(msg){
+  var t=document.getElementById('board-toast');
+  if(!t){
+    t=document.createElement('div'); t.id='board-toast';
+    t.style.cssText='position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#123a5e;color:#fff;font-weight:800;font-size:14px;padding:11px 22px;border-radius:24px;box-shadow:0 6px 20px rgba(0,0,0,.3);z-index:600;opacity:0;transition:opacity .2s;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg; t.style.opacity='1';
+  clearTimeout(t._tm); t._tm=setTimeout(function(){ t.style.opacity='0'; }, 1600);
+}
+// 今すぐ最新を取得
+function boardRefresh(){
+  boardToast('反映中…');
+  jsonpBusy=false; // 進行中フラグをリセットして即実行
+  poll();
+  setTimeout(function(){ boardToast('反映しました'); }, 600);
+}
 
 // ===== 出力（印刷・PDF・共有） =====
 function printBoard(){ window.print(); }

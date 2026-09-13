@@ -450,6 +450,7 @@
     <button class="big" onclick="loadLayout()">📂 開く</button>
     <button class="big" onclick="clearFloor()">🗑 クリア</button>
     <button class="big" onclick="openSummary()" style="background:#2e7d5b">📊 総括</button>
+    <button class="big" onclick="planceSync()" style="background:#3f77b3">🔄 反映</button>
   </header>
 
   <!-- ===== 状況設定バー ===== -->
@@ -804,6 +805,40 @@ function currentElapsedSec(){
   return e;
 }
 // GASへ状況を保存（グループ共有）。startedAtは実時刻ms、baseElapsedSecはstartMinに0点を置くため startMin*60 + elapsed で表現。
+// 簡易トースト表示
+function planToast(msg){
+  var t=document.getElementById('plan-toast');
+  if(!t){
+    t=document.createElement('div'); t.id='plan-toast';
+    t.style.cssText='position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#123a5e;color:#fff;font-weight:800;font-size:14px;padding:11px 22px;border-radius:24px;box-shadow:0 6px 20px rgba(0,0,0,.3);z-index:600;opacity:0;transition:opacity .2s;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg; t.style.opacity='1';
+  clearTimeout(t._tm); t._tm=setTimeout(function(){ t.style.opacity='0'; }, 1800);
+}
+
+// プランナー：状況・集計・レイアウトを今すぐGASへ共有
+function planceSync(){
+  var mg=(window.MY&&MY.group)?MY.group:null;
+  if(!mg){ planToast('グループに参加していないため共有できません'); return; }
+  planToast('反映中…');
+  // 状況＋集計
+  var body={ action:'saveSituation', group:mg,
+    month:SIT.month, temp:SIT.temp, humid:SIT.humid,
+    startMin:SIT.startMin, speed:SIT.speed,
+    startedAt: SIT.running?SIT.startedAt:0, running:SIT.running,
+    baseElapsedSec: Math.floor(SIT.baseElapsedSec) };
+  try{ body.tally=JSON.stringify(computeTally()); }catch(e){ body.tally=''; }
+  var p1=fetch(CARD_GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+  // レイアウト
+  var p2=fetch(CARD_GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({action:'saveLayout', group:mg, data:JSON.stringify({floors:state.floors, cur:state.cur})})});
+  Promise.all([p1,p2]).then(function(){
+    try{ localStorage.setItem('sos_layout', JSON.stringify(state.floors)); }catch(e){}
+    planToast('反映しました（掲示板に共有）');
+  }).catch(function(){ planToast('反映に失敗しました。通信を確認してください'); });
+}
+
 function saveSitToGAS(){
   var mg = (window.MY && MY.group) ? MY.group : null;
   if(!mg){ return; } // グループ未参加なら共有しない
