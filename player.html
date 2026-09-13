@@ -416,35 +416,48 @@ function layoutHtml(group){
   var L = layouts[group];
   if(!L || !L.floors || !L.floors.length) return '';
   var floors = L.floors;
-  // 何か配置があるフロアが1つでもあるか
-  var hasAny = floors.some(function(f){ return (f.zones&&f.zones.length)||(f.items&&f.items.length); });
-  if(!hasAny) return '';
 
   // 表示中フロア（未設定なら保存時のcur、なければ0）
   var idx = boardFloorIdx[group];
   if(idx==null) idx = (L.cur!=null?L.cur:0);
-  if(idx>=floors.length) idx=0;
+  if(idx>=floors.length) idx=floors.length-1;
+  if(idx<0) idx=0;
   boardFloorIdx[group]=idx;
 
-  // フロアタブ（複数階のときだけ）
+  // フロアタブ（階が複数あれば常に全階分を表示。空の階も含む）
   var tabs='';
   if(floors.length>1){
     tabs = '<div class="lv-floors">'+floors.map(function(f,i){
-      return '<button class="lv-ftab'+(i===idx?' on':'')+'" onclick="boardSelectFloor(\''+esc(group).replace(/'/g,"\\'")+'\','+i+')">'+esc(f.name||('フロア'+(i+1)))+'</button>';
+      var nm=(f.name||('フロア'+(i+1)));
+      var empty=!((f.zones&&f.zones.length)||(f.items&&f.items.length));
+      return '<button class="lv-ftab'+(i===idx?' on':'')+'" data-g="'+esc(group)+'" data-i="'+i+'">'+esc(nm)+(empty?'（空）':'')+'</button>';
     }).join('')+'</div>';
   }
 
   var floor = floors[idx];
   var fname = floor.name ? (' ／ '+esc(floor.name)) : '';
+  var body;
+  if((floor.zones&&floor.zones.length)||(floor.items&&floor.items.length)){
+    body = floorCanvasHtml(floor);
+  } else {
+    body = '<div class="empty">この階にはまだ配置がありません。</div>';
+  }
   return '<div class="layoutview"><div class="lv-h">🗺️ 避難所レイアウト（閲覧専用）'+fname+'</div>'+
-    tabs + floorCanvasHtml(floor) + '</div>';
+    tabs + body + '</div>';
 }
 
-// フロア切り替え（掲示板・閲覧のみ）
+// フロア切り替え（掲示板・閲覧のみ）：イベント委譲で確実に拾う
 function boardSelectFloor(group, i){
   boardFloorIdx[group]=i;
   renderBody();
 }
+// レイアウトのフロアタブはイベント委譲で処理（再描画されても効く）
+document.addEventListener('click', function(e){
+  var b=e.target.closest ? e.target.closest('.lv-ftab') : null;
+  if(!b) return;
+  var g=b.getAttribute('data-g'); var i=parseInt(b.getAttribute('data-i'),10);
+  if(g!=null && !isNaN(i)){ boardSelectFloor(g, i); }
+});
 // 状況（月・気温・湿度・時刻）のHTMLを作る。runningなら現在時刻を算出。
 function situationHtml(group){
   var s = situations[group];
