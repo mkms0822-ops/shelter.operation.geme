@@ -314,6 +314,7 @@
   .set-leave:hover{background:#f4f8fb}
 
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -598,13 +599,37 @@ function buildSummaryHTML(){
     '<h2>3. 発生イベントと対応内容</h2>'+
     '<p class="muted2">総イベント数：'+log.length+'件（緊急'+dangerCnt+'／注意'+warnCnt+'）　対応記入済み：'+respCnt+'件</p>'+
     evTable+
-    '<h2>4. 避難所レイアウト（部屋一覧）</h2>'+zoneTable+
+    '<h2>4. 避難所レイアウト</h2>'+
+    '<div id="sum-layout-img"><p class="muted2">レイアウト画像を生成中…</p></div>'+
+    zoneTable+
     '<p class="muted2" style="margin-top:16px">※本レポートはプランナー画面の記録に基づいて自動生成されました。</p>';
 }
 
 function openSummary(){
   document.getElementById('summary-content').innerHTML = buildSummaryHTML();
   document.getElementById('summary-overlay').classList.add('show');
+  captureLayoutImage();
+}
+// キャンバス（避難所レイアウト）を画像化して総括に差し込む
+function captureLayoutImage(){
+  var holder=document.getElementById('sum-layout-img');
+  var target=document.getElementById('canvas');
+  if(!holder) return;
+  if(!target || typeof html2canvas==='undefined'){
+    holder.innerHTML='<p class="muted2">レイアウト画像を取得できませんでした。</p>';
+    return;
+  }
+  html2canvas(target, {backgroundColor:'#eef4f8', scale:2, logging:false}).then(function(cv){
+    try{
+      var url=cv.toDataURL('image/png');
+      holder.innerHTML='<img src="'+url+'" style="width:100%;border:1px solid #d3dde5;border-radius:8px" alt="避難所レイアウト">';
+      window._sumLayoutDataUrl = url; // 共有・保存用に保持
+    }catch(e){
+      holder.innerHTML='<p class="muted2">レイアウト画像の生成に失敗しました。</p>';
+    }
+  }).catch(function(){
+    holder.innerHTML='<p class="muted2">レイアウト画像の生成に失敗しました。</p>';
+  });
 }
 function closeSummary(){ document.getElementById('summary-overlay').classList.remove('show'); }
 function printSummary(){ window.print(); }
