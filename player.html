@@ -77,6 +77,13 @@
   .tallybar .tchip.total{background:var(--navy);color:#fff;border-color:var(--navy)}
   .tallybar .tchip.cap{background:#eaf5ef;color:#1b5e3f;border-color:#bfe0cd}
   .tallybar .tchip.room{background:#eef4f8;color:#123a5e;border-color:#cfe0ec}
+  /* 参加者バー */
+  .memberbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 13px;margin-bottom:14px}
+  .memberbar .mb-count{font-size:13px;font-weight:900;color:var(--navy);background:#eef4f8;border-radius:14px;padding:4px 12px;white-space:nowrap}
+  .memberbar .mb-names{display:flex;gap:6px;flex-wrap:wrap}
+  .memberbar .pchip{font-size:11.5px;font-weight:700;color:#33404c;background:#f4f8fb;border:1px solid var(--line);border-radius:12px;padding:3px 10px;display:flex;align-items:center;gap:5px}
+  .memberbar .pchip .dot{width:9px;height:9px;border-radius:50%}
+  .memberbar .mb-none{font-size:12px;color:var(--sub)}
   /* レイアウト閲覧 */
   .layoutview{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:16px}
   .layoutview .lv-h{font-size:12px;font-weight:800;color:var(--navy);margin-bottom:8px}
@@ -204,6 +211,7 @@ var eventsAll = [];       // 全イベント
 var memos = {};           // {group: {text, updated}}
 var situations = {};      // {group: {month,temp,humid,startMin,speed,startedAt,running,baseElapsedSec}}
 var layouts = {};         // {group: {floors, cur}}
+var members = [];         // [{id,name,group,joined}]
 var curTab = ALL;         // 選択中タブ（'all' or グループ名）
 var seenCount = {};       // タブごとに既読件数（新着バッジ用）
 var editing = false;      // メモ編集中はメモ欄を上書きしない
@@ -330,6 +338,7 @@ function handle(res){
   eventsAll = (res && res.events) ? res.events : [];
   situations = (res && res.situations) ? res.situations : {};
   layouts = (res && res.layouts) ? res.layouts : {};
+  members = (res && res.members) ? res.members : [];
   // メモ編集中はサーバーのメモで上書きしない（自分の入力を守る）
   if(!editing){ memos = (res && res.memos) ? res.memos : {}; }
   dbg('接続OK / イベント'+eventsAll.length+'件 / '+ (groups.length) +'グループ');
@@ -482,6 +491,14 @@ document.addEventListener('click', function(e){
   var g=b.getAttribute('data-g'); var i=parseInt(b.getAttribute('data-i'),10);
   if(g!=null && !isNaN(i)){ boardSelectFloor(g, i); }
 });
+// 参加者バー（そのグループの参加登録者数と名前）
+function membersBarHtml(group){
+  var list = members.filter(function(m){ return m.group===group; });
+  var names = list.map(function(m){ return '<span class="pchip">'+esc(m.name)+'</span>'; }).join('');
+  return '<div class="memberbar"><span class="mb-count">👥 参加者 '+list.length+'人</span>'+
+    (names?('<span class="mb-names">'+names+'</span>'):'<span class="mb-none">まだ参加者がいません</span>')+'</div>';
+}
+
 // 状況（月・気温・湿度・時刻）のHTMLを作る。runningなら現在時刻を算出。
 function situationHtml(group){
   var s = situations[group];
@@ -564,8 +581,19 @@ function renderBody(){
   }
 
   var layoutView = curTab===ALL ? '' : layoutHtml(curTab);
+  var memberView = curTab===ALL ? allMembersHtml() : membersBarHtml(curTab);
 
-  main.innerHTML = sitHtml + layoutView + memoHtml + '<div id="evholder">'+eventsListHtml()+'</div>';
+  main.innerHTML = memberView + sitHtml + layoutView + memoHtml + '<div id="evholder">'+eventsListHtml()+'</div>';
+}
+// 全体タブ：全グループの参加者数一覧
+function allMembersHtml(){
+  if(!groups.length) return '';
+  var rows = groups.map(function(g){
+    var cnt = members.filter(function(m){return m.group===g.name;}).length;
+    return '<span class="pchip"><span class="dot dot-'+colorClass(g.color)+'"></span>'+esc(g.name)+' '+cnt+'人</span>';
+  }).join('');
+  var total = members.length;
+  return '<div class="memberbar"><span class="mb-count">👥 参加者 合計'+total+'人</span><span class="mb-names">'+rows+'</span></div>';
 }
 
 // 進行中の時計を毎秒更新（表示だけ差し替え）
