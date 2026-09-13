@@ -39,6 +39,7 @@
   .dot-green{background:#3f9e63} .dot-pink{background:#c25a86} .dot-orange{background:#c9832f} .dot-blue{background:#3f77b3} .dot-all{background:#7a8a97}
   .tab.on{color:var(--navy);border-color:var(--steel);border-bottom-color:#fff;background:#fff;box-shadow:0 -2px 8px rgba(18,58,94,.06)}
   .tab .cnt{font-size:10.5px;font-weight:800;color:#fff;background:var(--steel);border-radius:9px;padding:1px 7px}
+  .tab .cnt.pcnt{background:#2e7d5b}
   .tab .newbadge{width:8px;height:8px;border-radius:50%;background:var(--danger);position:absolute;top:6px;right:6px;display:none}
   .tab.hasnew .newbadge{display:block}
 
@@ -358,9 +359,13 @@ function renderTabs(){
     var cnt=list.length;
     var seen=seenCount[t.name]||0;
     var hasNew = cnt>seen && t.name!==curTab;
+    // 参加者数（全体は総数）
+    var pcnt = (t.name===ALL) ? members.length : members.filter(function(m){return m.group===t.name;}).length;
     return '<button class="tab '+(t.name===curTab?'on':'')+(hasNew?' hasnew':'')+'" onclick="selectTab(\''+esc(t.name).replace(/'/g,"\\'")+'\')">'+
       '<span class="dot dot-'+t.color+'"></span>'+esc(t.label)+
-      '<span class="cnt">'+cnt+'</span><span class="newbadge"></span></button>';
+      '<span class="cnt" title="イベント件数">📣'+cnt+'</span>'+
+      '<span class="cnt pcnt" title="参加者数">👥'+pcnt+'</span>'+
+      '<span class="newbadge"></span></button>';
   }).join('');
 }
 
