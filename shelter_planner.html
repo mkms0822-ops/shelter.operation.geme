@@ -58,6 +58,10 @@
   .sitgrp label{font-size:12px;font-weight:800;color:var(--sub);white-space:nowrap}
   .sitbar select{border:1.5px solid var(--line);border-radius:8px;padding:6px 9px;font-size:13px;font-family:inherit;color:var(--ink);background:#fff}
   .sitclock{display:flex;align-items:center;gap:8px;margin-left:auto}
+  .sittally{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:44%}
+  .sittally .tchip{font-size:11px;font-weight:800;color:#33404c;background:#fff;border:1px solid var(--line);border-radius:14px;padding:3px 9px;white-space:nowrap}
+  .sittally .tchip.total{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .sittally .tsep{width:1px;height:16px;background:var(--line)}
   .sitclock .clock{font-size:26px;font-weight:900;color:var(--navy);font-variant-numeric:tabular-nums;letter-spacing:.02em;min-width:118px;text-align:center;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:4px 12px}
   .sitclock .day{font-size:12px;font-weight:800;color:var(--sub)}
   .sitbtn{background:var(--navy);color:#fff;border:0;border-radius:8px;padding:8px 13px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
@@ -128,6 +132,10 @@
   .side-btn.teal{background:var(--steel)}
   .side-btn.ghost{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
   .cardbox{border:1px solid var(--line);border-left:4px solid var(--care);border-radius:9px;padding:12px;margin-bottom:10px;background:#fff}
+  .cardresp{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+  .cardresp .respbox{width:100%;border:1px solid #cfe0d8;border-radius:7px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--ink);background:#f5faf7;resize:vertical;min-height:70px;line-height:1.5}
+  .cardresp .respbox:focus{outline:none;border-color:#2e7d5b}
+  .cardresp .resplabel{display:block;font-size:11px;font-weight:800;color:#2e7d5b;margin-bottom:4px}
   .cardbox .ct{font-size:13.5px;font-weight:800;color:var(--navy);margin-bottom:4px}
   .cardbox .cd{font-size:12px;color:#33404c;line-height:1.6}
   .cardbox .ctag{display:inline-block;font-size:10px;font-weight:700;color:#fff;background:var(--care);border-radius:10px;padding:1px 8px;margin-bottom:6px}
@@ -225,6 +233,15 @@
   .sum-btn:hover{background:rgba(255,255,255,.28)}
   .sum-btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.4)}
   #summary-content{padding:22px 26px}
+  .sum-archive{padding:0 26px 26px;border-top:1px solid var(--line);margin-top:8px}
+  .sum-archive h2{font-size:15px;color:var(--navy);font-weight:900;margin:16px 0 10px}
+  .arch-ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .arch-ctrl label{font-size:12px;font-weight:800;color:var(--sub)}
+  .arch-ctrl select{border:1.5px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;color:var(--ink);background:#fff}
+  #arch-content table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
+  #arch-content th,#arch-content td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  #arch-content th{background:#eef4f8;font-weight:800;color:var(--navy);white-space:nowrap}
+  #arch-content .agrp{font-size:14px;font-weight:900;color:var(--navy);margin:14px 0 6px}
   #summary-content h2{font-size:15px;color:var(--navy);font-weight:900;border-bottom:2px solid var(--line);padding-bottom:5px;margin:20px 0 10px}
   #summary-content h2:first-child{margin-top:0}
   #summary-content table{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:13px}
@@ -438,6 +455,7 @@
         <option value="1440">1日=1分</option>
       </select>
     </div>
+    <div class="sittally" id="sittally"></div>
     <div class="sitclock">
       <span class="day" id="sit-day">1日目</span>
       <span class="clock" id="sit-clock">08:00</span>
@@ -609,6 +627,60 @@ function openSummary(){
   document.getElementById('summary-content').innerHTML = buildSummaryHTML();
   document.getElementById('summary-overlay').classList.add('show');
   captureLayoutImage();
+  loadArchiveDates();
+}
+
+// アーカイブの日付・グループ選択肢を取得
+function loadArchiveDates(){
+  var cb='archDcb_'+Date.now(); var s=document.createElement('script');
+  var to=setTimeout(function(){cleanup();},8000);
+  function cleanup(){ try{delete window[cb];}catch(e){} if(s.parentNode)s.parentNode.removeChild(s); clearTimeout(to); }
+  window[cb]=function(res){
+    cleanup();
+    var dsel=document.getElementById('arch-date');
+    var gsel=document.getElementById('arch-group');
+    if(dsel && res && res.dates){
+      dsel.innerHTML='<option value="">選択…</option>'+res.dates.map(function(d){return '<option value="'+d+'">'+d+'</option>';}).join('');
+    }
+    if(gsel){
+      var gs=(typeof GROUPS!=='undefined'&&GROUPS.length)?GROUPS:[];
+      gsel.innerHTML='<option value="">すべて</option>'+gs.map(function(g){return '<option value="'+esc(g.name)+'">'+esc(g.name)+'</option>';}).join('');
+    }
+  };
+  s.onerror=cleanup;
+  s.src=CARD_GAS_URL+'?action=archive&dates=1&callback='+cb;
+  document.head.appendChild(s);
+}
+
+function loadArchive(){
+  var date=document.getElementById('arch-date').value;
+  var group=document.getElementById('arch-group').value;
+  var holder=document.getElementById('arch-content');
+  if(!date){ holder.innerHTML='<p class="muted2">日付を選んでください。</p>'; return; }
+  holder.innerHTML='<p class="muted2">読み込み中…</p>';
+  var cb='archCb_'+Date.now(); var s=document.createElement('script');
+  var to=setTimeout(function(){cleanup(); holder.innerHTML='<p class="muted2">取得できませんでした。</p>';},8000);
+  function cleanup(){ try{delete window[cb];}catch(e){} if(s.parentNode)s.parentNode.removeChild(s); clearTimeout(to); }
+  window[cb]=function(res){
+    cleanup();
+    var list=(res&&res.archive)?res.archive:[];
+    if(!list.length){ holder.innerHTML='<p class="muted2">この条件の記録はありません。</p>'; return; }
+    // グループごとにまとめて表示
+    var byG={}; var order=[];
+    list.forEach(function(a){ if(!byG[a.group]){byG[a.group]=[];order.push(a.group);} byG[a.group].push(a); });
+    holder.innerHTML = order.map(function(g){
+      return '<div class="agrp">'+esc(g||'（未参加）')+'（'+byG[g].length+'件）</div>'+
+        '<table><tr><th>時刻</th><th>区分</th><th>状況</th><th>対応方法</th></tr>'+
+        byG[g].map(function(a){
+          return '<tr><td>'+esc((a.datetime||'').split(' ')[1]||'')+'</td><td>'+esc(a.tag)+'</td>'+
+            '<td><b>'+esc(a.title)+'</b>'+(a.detail?('<br><span class="muted2">'+esc(a.detail)+'</span>'):'')+'</td>'+
+            '<td class="respcell">'+(a.response?esc(a.response):'<span class="muted2">（未記入）</span>')+'</td></tr>';
+        }).join('')+'</table>';
+    }).join('');
+  };
+  s.onerror=function(){cleanup(); holder.innerHTML='<p class="muted2">取得できませんでした。</p>';};
+  s.src=CARD_GAS_URL+'?action=archive&date='+encodeURIComponent(date)+(group?('&group='+encodeURIComponent(group)):'')+'&callback='+cb;
+  document.head.appendChild(s);
 }
 // キャンバス（避難所レイアウト）を画像化して総括に差し込む
 function captureLayoutImage(){
@@ -991,6 +1063,34 @@ function renderCanvas(){
   var f=curFloor();
   f.zones.forEach(function(z){ canvas.appendChild(zoneEl(z)); });
   f.items.forEach(function(it){ canvas.appendChild(itemEl(it)); });
+  renderTally();
+}
+
+// 配置人数・設備数の集計
+function computeTally(){
+  var f=curFloor();
+  var people={}, facility={}, total=0;
+  (f.items||[]).forEach(function(it){
+    if(it.cap){ // 人数を持つ配置
+      var n=parseInt(it.count||0,10)||0;
+      people[it.t]=(people[it.t]||0)+n;
+      total+=n;
+    } else {
+      facility[it.t]=(facility[it.t]||0)+1;
+    }
+  });
+  return {people:people, facility:facility, total:total};
+}
+function renderTally(){
+  var el=document.getElementById('sittally');
+  if(!el) return;
+  var t=computeTally();
+  var chips=[];
+  chips.push('<span class="tchip total">総人数 '+t.total+'人</span>');
+  Object.keys(t.people).forEach(function(k){ if(t.people[k]>0) chips.push('<span class="tchip">'+esc(k)+' '+t.people[k]+'</span>'); });
+  var fk=Object.keys(t.facility);
+  if(fk.length){ chips.push('<span class="tsep"></span>'); fk.forEach(function(k){ chips.push('<span class="tchip">'+esc(k)+' ×'+t.facility[k]+'</span>'); }); }
+  el.innerHTML=chips.join('');
 }
 
 // 部屋（ゾーン）
@@ -1218,12 +1318,52 @@ function drawCard(){
   script.src = CARD_GAS_URL + '?action=poll&since=0&group=' + encodeURIComponent((window.MY&&MY.group)||'all') + '&callback=' + cbName;
   document.head.appendChild(script);
 }
+var _lastCard = null;  // 直近に引いたカード
 function showCard(c){
+  _lastCard = c;
+  var title = esc(c.t||c.title||'');
+  var detail = esc(c.d||c.detail||'');
+  var tag = esc(c.tag||'状況');
   document.getElementById('cardarea').innerHTML=
-    '<div class="cardbox"><span class="ctag">'+(c.tag||'状況')+'</span>'+
-    '<div class="ct">'+esc(c.t||c.title||'')+'</div>'+
-    '<div class="cd">'+esc(c.d||c.detail||'')+'</div></div>'+
-    '<div class="muted">この状況にどう対応しますか？ 図面の配置を動かし、部屋のメモに方針を書き込みながら話し合いましょう。正解は一つではありません。</div>';
+    '<div class="cardbox"><span class="ctag">'+tag+'</span>'+
+    '<div class="ct">'+title+'</div>'+
+    '<div class="cd">'+detail+'</div></div>'+
+    '<div class="muted" style="margin-top:8px">この状況にどう対応しますか？ 下の欄に対応方法を記入して保存できます。</div>'+
+    '<div class="cardresp">'+
+      '<label class="resplabel">対応方法（自由記載）</label>'+
+      '<textarea id="card-resp" class="respbox" placeholder="このカードの状況にどう対応するか、方針・判断・役割分担などを記入"></textarea>'+
+      '<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'+
+        '<button class="side-btn teal" style="width:auto;padding:8px 16px;margin:0" onclick="saveCardResponse()">💾 対応を保存（アーカイブ）</button>'+
+        '<span class="muted" id="card-resp-stat"></span>'+
+      '</div>'+
+    '</div>';
+  // 記入欄へフォーカス
+  setTimeout(function(){ var t=document.getElementById('card-resp'); if(t) t.focus(); },0);
+}
+
+// 引いたカードと対応メモをスプシにアーカイブ保存
+function saveCardResponse(){
+  var ta=document.getElementById('card-resp');
+  var stat=document.getElementById('card-resp-stat');
+  if(!ta || !_lastCard){ return; }
+  var resp=ta.value.trim();
+  if(!resp){ if(stat) stat.textContent='対応方法を入力してください'; return; }
+  var grp=(window.MY&&MY.group)?MY.group:'（未参加）';
+  if(stat) stat.textContent='保存中…';
+  var body={
+    action:'saveArchive',
+    group: grp,
+    tag: _lastCard.tag||'状況',
+    title: _lastCard.t||_lastCard.title||'',
+    detail: _lastCard.d||_lastCard.detail||'',
+    severity: _lastCard.severity||'info',
+    response: resp
+  };
+  fetch(CARD_GAS_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body)})
+    .then(function(r){return r.json();}).then(function(res){
+      if(res && res.ok){ if(stat) stat.textContent='保存しました（'+(res.date||'')+'）'; }
+      else { if(stat) stat.textContent='保存に失敗しました'; }
+    }).catch(function(){ if(stat) stat.textContent='通信エラーで保存できませんでした'; });
 }
 
 // ===== 保存・読み込み（端末内） =====
@@ -1516,6 +1656,15 @@ init();
       <button class="sum-btn ghost" onclick="closeSummary()">✕ 閉じる</button>
     </div>
     <div id="summary-content"></div>
+    <div class="sum-archive">
+      <h2 style="margin-top:6px">📁 アーカイブ（保存済みの対応記録）</h2>
+      <div class="arch-ctrl">
+        <label>日付</label><select id="arch-date" onchange="loadArchive()"><option value="">選択…</option></select>
+        <label>グループ</label><select id="arch-group" onchange="loadArchive()"><option value="">すべて</option></select>
+        <button class="sum-btn" style="background:#2e7d5b" onclick="loadArchive()">表示</button>
+      </div>
+      <div id="arch-content"><p class="muted2">日付を選ぶと、その日に保存された各グループの対応記録を表示します。</p></div>
+    </div>
   </div>
 </div>
 
