@@ -72,6 +72,11 @@
   .sitcard .sc-clock{font-size:20px;font-weight:900;color:var(--navy);font-variant-numeric:tabular-nums;margin-left:auto}
   .sitcard .run{font-size:11px;font-weight:800;color:#2e7d5b}
   .sitcard .stop{font-size:11px;font-weight:800;color:var(--sub)}
+  .tallybar{display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 14px}
+  .tallybar .tchip{font-size:11.5px;font-weight:800;color:#33404c;background:#fff;border:1px solid var(--line);border-radius:14px;padding:3px 10px}
+  .tallybar .tchip.total{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .tallybar .tchip.cap{background:#eaf5ef;color:#1b5e3f;border-color:#bfe0cd}
+  .tallybar .tchip.fac{background:#eef4f8;color:#33404c}
   .sitrow{display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
   .sitrow-g{font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:7px;min-width:110px}
   .sitrow .dot{width:11px;height:11px;border-radius:50%}
@@ -374,12 +379,26 @@ function situationHtml(group){
   var mn = ((totalMin % (24*60)) + (24*60)) % (24*60);
   var clock = ('0'+Math.floor(mn/60)).slice(-2)+':'+('0'+(mn%60)).slice(-2);
   var runDot = s.running ? '<span class="run">● 進行中</span>' : '<span class="stop">■ 停止</span>';
-  return '<div class="sitcard">'+
+  var html = '<div class="sitcard">'+
     '<div class="sc-item">'+seasonOf(s.month)+'（'+s.month+'月）</div>'+
     '<div class="sc-item">🌡 '+s.temp+'℃</div>'+
     '<div class="sc-item">💧 '+s.humid+'%</div>'+
     '<div class="sc-clock" data-group="'+esc(group)+'">'+day+'日目 '+clock+'</div>'+
     runDot+'</div>';
+  html += tallyHtml(s.tally);
+  return html;
+}
+// 集計（人数・設備）のチップ表示
+function tallyHtml(t){
+  if(!t) return '';
+  var chips=[];
+  chips.push('<span class="tchip total">総人数 '+(t.total||0)+'人</span>');
+  if(t.capacity>0) chips.push('<span class="tchip cap">収容定員 '+t.capacity+'人</span>');
+  if(t.people){ Object.keys(t.people).forEach(function(k){ if(t.people[k]>0) chips.push('<span class="tchip">'+esc(k)+' '+t.people[k]+'</span>'); }); }
+  if(t.rooms>0) chips.push('<span class="tchip fac">部屋 '+t.rooms+'室</span>');
+  if(t.facility){ Object.keys(t.facility).forEach(function(k){ chips.push('<span class="tchip fac">'+esc(k)+' ×'+t.facility[k]+'</span>'); }); }
+  if(chips.length<=1 && !t.total && !t.capacity) return '';
+  return '<div class="tallybar">'+chips.join('')+'</div>';
 }
 // 全体タブ用：全グループの状況を並べる
 function allSituationsHtml(){

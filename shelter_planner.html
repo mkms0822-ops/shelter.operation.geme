@@ -61,6 +61,7 @@
   .sittally{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:44%}
   .sittally .tchip{font-size:11px;font-weight:800;color:#33404c;background:#fff;border:1px solid var(--line);border-radius:14px;padding:3px 9px;white-space:nowrap}
   .sittally .tchip.total{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .sittally .tchip.cap{background:#eaf5ef;color:#1b5e3f;border-color:#bfe0cd}
   .sittally .tsep{width:1px;height:16px;background:var(--line)}
   .sitclock .clock{font-size:26px;font-weight:900;color:var(--navy);font-variant-numeric:tabular-nums;letter-spacing:.02em;min-width:118px;text-align:center;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:4px 12px}
   .sitclock .day{font-size:12px;font-weight:800;color:var(--sub)}
@@ -787,11 +788,30 @@ function saveSitToGAS(){
   };
   // baseElapsedSec を startMin に織り込むのではなく、別途送るためグローバルに付加
   body.baseElapsedSec = Math.floor(SIT.baseElapsedSec);
+  // 配置集計（人数・設備）を相乗りで共有
+  try{ body.tally = JSON.stringify(computeTally()); }catch(e){ body.tally=''; }
   try{
     fetch(CARD_GAS_URL, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body)});
   }catch(e){}
 }
 function pad2(n){ return (n<10?'0':'')+n; }
+
+// 集計だけをGASへ共有（アイテム変更時。デバウンス）
+var _tallyTimer=null;
+function saveTallyToGAS(){
+  if(_tallyTimer) clearTimeout(_tallyTimer);
+  _tallyTimer=setTimeout(function(){
+    var mg=(window.MY&&MY.group)?MY.group:null;
+    if(!mg) return;
+    var body={ action:'saveSituation', group:mg,
+      month:SIT.month, temp:SIT.temp, humid:SIT.humid,
+      startMin:SIT.startMin, speed:SIT.speed,
+      startedAt: SIT.running?SIT.startedAt:0, running:SIT.running,
+      baseElapsedSec: Math.floor(SIT.baseElapsedSec) };
+    try{ body.tally=JSON.stringify(computeTally()); }catch(e){ body.tally=''; }
+    try{ fetch(CARD_GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}); }catch(e){}
+  }, 800);
+}
 
 function buildSitOptions(){
   // 月
@@ -1069,7 +1089,7 @@ function renderCanvas(){
 // 配置人数・設備数の集計
 function computeTally(){
   var f=curFloor();
-  var people={}, facility={}, total=0;
+  var people={}, facility={}, total=0, capacity=0, rooms=0;
   (f.items||[]).forEach(function(it){
     if(it.cap){ // 人数を持つ配置
       var n=parseInt(it.count||0,10)||0;
@@ -1079,7 +1099,13 @@ function computeTally(){
       facility[it.t]=(facility[it.t]||0)+1;
     }
   });
-  return {people:people, facility:facility, total:total};
+  // 部屋（zones）の定員を収容定員として集計
+  (f.zones||[]).forEach(function(z){
+    rooms++;
+    var c=parseInt(z.cap||0,10)||0;
+    capacity+=c;
+  });
+  return {people:people, facility:facility, total:total, capacity:capacity, rooms:rooms};
 }
 function renderTally(){
   var el=document.getElementById('sittally');
@@ -1087,10 +1113,14 @@ function renderTally(){
   var t=computeTally();
   var chips=[];
   chips.push('<span class="tchip total">総人数 '+t.total+'人</span>');
+  if(t.capacity>0) chips.push('<span class="tchip cap">収容定員 '+t.capacity+'人</span>');
   Object.keys(t.people).forEach(function(k){ if(t.people[k]>0) chips.push('<span class="tchip">'+esc(k)+' '+t.people[k]+'</span>'); });
   var fk=Object.keys(t.facility);
-  if(fk.length){ chips.push('<span class="tsep"></span>'); fk.forEach(function(k){ chips.push('<span class="tchip">'+esc(k)+' ×'+t.facility[k]+'</span>'); }); }
+  if(t.rooms>0 || fk.length){ chips.push('<span class="tsep"></span>'); }
+  if(t.rooms>0) chips.push('<span class="tchip">部屋 '+t.rooms+'室</span>');
+  fk.forEach(function(k){ chips.push('<span class="tchip">'+esc(k)+' ×'+t.facility[k]+'</span>'); });
   el.innerHTML=chips.join('');
+  saveTallyToGAS();
 }
 
 // 部屋（ゾーン）
@@ -1114,13 +1144,22 @@ function zoneEl(z){
     if(e.target.classList && (e.target.classList.contains('zresize')||e.target.classList.contains('zname')||e.target.classList.contains('zdel'))) return;
     selectZone(z.id);
   });
-  // ヘッダドラッグで移動
+  // ヘッダドラッグで移動（pointerdown優先）
   var head=el.querySelector('.zhead');
-  head.addEventListener('mousedown',function(e){ startDragZone(e,z,el); });
-  head.addEventListener('touchstart',function(e){ if(e.target.classList&&(e.target.classList.contains('zname')||e.target.classList.contains('zdel')))return; startDragZone(e,z,el); },{passive:false});
-  // リサイズ
-  el.querySelector('.zresize').addEventListener('mousedown',function(e){ startResizeZone(e,z,el); });
-  el.querySelector('.zresize').addEventListener('touchstart',function(e){ startResizeZone(e,z,el); },{passive:false});
+  if(window.PointerEvent){
+    head.addEventListener('pointerdown',function(e){ startDragZone(e,z,el); });
+  } else {
+    head.addEventListener('mousedown',function(e){ startDragZone(e,z,el); });
+    head.addEventListener('touchstart',function(e){ startDragZone(e,z,el); },{passive:false});
+  }
+  // リサイズ（pointerdown優先）
+  var rz=el.querySelector('.zresize');
+  if(window.PointerEvent){
+    rz.addEventListener('pointerdown',function(e){ startResizeZone(e,z,el); });
+  } else {
+    rz.addEventListener('mousedown',function(e){ startResizeZone(e,z,el); });
+    rz.addEventListener('touchstart',function(e){ startResizeZone(e,z,el); },{passive:false});
+  }
   return el;
 }
 function delZone(e,id){ e.stopPropagation(); var f=curFloor(); f.zones=f.zones.filter(function(z){return z.id!==id;}); if(state.sel&&state.sel.id===id)state.sel=null; renderCanvas(); renderSel(); }
@@ -1148,46 +1187,68 @@ function zoneNameCommit(e,id){
 }
 
 function startDragZone(e,z,el){
-  if(e.type==='mousedown') e.preventDefault();
-  var pt=e.touches?e.touches[0]:e;
+  if(e.target && e.target.classList && (e.target.classList.contains('zname')||e.target.classList.contains('zdel'))) return;
+  if(e.type==='mousedown'||e.type==='pointerdown') e.preventDefault();
+  var head = el.querySelector('.zhead');
+  var pid = (e.pointerId!=null) ? e.pointerId : null;
+  var pt = e.touches ? e.touches[0] : e;
   var sx=pt.clientX, sy=pt.clientY, ox=z.x, oy=z.y;
   function mv(ev){
-    var p=ev.touches?ev.touches[0]:ev;
-    z.x=Math.max(0,ox+p.clientX-sx); z.y=Math.max(0,oy+p.clientY-sy);
+    var p = ev.touches ? ev.touches[0] : ev;
+    z.x=Math.max(0, ox + p.clientX - sx); z.y=Math.max(0, oy + p.clientY - sy);
     el.style.left=z.x+'px'; el.style.top=z.y+'px';
     if(ev.cancelable && ev.touches) ev.preventDefault();
   }
   function up(){
-    document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up);
-    document.removeEventListener('touchmove',mv); document.removeEventListener('touchend',up);
-    document.removeEventListener('touchcancel',up);
+    window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); window.removeEventListener('pointercancel',up);
+    window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up);
+    window.removeEventListener('touchmove',mv); window.removeEventListener('touchend',up);
+    try{ if(pid!=null && head.releasePointerCapture) head.releasePointerCapture(pid); }catch(_){}
   }
-  document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
-  document.addEventListener('touchmove',mv,{passive:false}); document.addEventListener('touchend',up);
-  document.addEventListener('touchcancel',up);
+  if(window.PointerEvent){
+    try{ if(pid!=null && head.setPointerCapture) head.setPointerCapture(pid); }catch(_){}
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up); window.addEventListener('pointercancel',up);
+  } else {
+    window.addEventListener('mousemove',mv); window.addEventListener('mouseup',up);
+    window.addEventListener('touchmove',mv,{passive:false}); window.addEventListener('touchend',up);
+  }
 }
 function startResizeZone(e,z,el){
   e.preventDefault(); e.stopPropagation();
-  var pt=e.touches?e.touches[0]:e;
+  var handle = el.querySelector('.zresize');
+  var pid = (e.pointerId!=null) ? e.pointerId : null;
+  var pt = e.touches ? e.touches[0] : e;
   var sx=pt.clientX, sy=pt.clientY, ow=z.w, oh=z.h;
-  var moved=false;
   function mv(ev){
-    var p=ev.touches?ev.touches[0]:ev;
-    z.w=Math.max(60, ow + p.clientX - sx);
-    z.h=Math.max(44, oh + p.clientY - sy);
-    el.style.width=z.w+'px'; el.style.height=z.h+'px';
-    moved=true;
+    var p = ev.touches ? ev.touches[0] : ev;
+    z.w = Math.max(60, ow + p.clientX - sx);
+    z.h = Math.max(44, oh + p.clientY - sy);
+    el.style.width = z.w+'px'; el.style.height = z.h+'px';
     if(ev.cancelable) ev.preventDefault();
   }
   function up(){
-    document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up);
-    document.removeEventListener('touchmove',mv); document.removeEventListener('touchend',up);
-    document.removeEventListener('touchcancel',up);
-    // DOMは作り直さない（同じ要素を使い続けることで何度でもリサイズ可能）
+    window.removeEventListener('pointermove',mv);
+    window.removeEventListener('pointerup',up);
+    window.removeEventListener('pointercancel',up);
+    window.removeEventListener('mousemove',mv);
+    window.removeEventListener('mouseup',up);
+    window.removeEventListener('touchmove',mv);
+    window.removeEventListener('touchend',up);
+    try{ if(pid!=null && handle.releasePointerCapture) handle.releasePointerCapture(pid); }catch(_){}
+    renderTally();  // 集計だけ更新（DOMは作り直さない）
   }
-  document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
-  document.addEventListener('touchmove',mv,{passive:false}); document.addEventListener('touchend',up);
-  document.addEventListener('touchcancel',up);
+  // ポインターイベント優先（最も堅牢）。無ければmouse/touchにフォールバック
+  if(window.PointerEvent){
+    try{ if(pid!=null && handle.setPointerCapture) handle.setPointerCapture(pid); }catch(_){}
+    window.addEventListener('pointermove',mv);
+    window.addEventListener('pointerup',up);
+    window.addEventListener('pointercancel',up);
+  } else {
+    window.addEventListener('mousemove',mv);
+    window.addEventListener('mouseup',up);
+    window.addEventListener('touchmove',mv,{passive:false});
+    window.addEventListener('touchend',up);
+  }
 }
 
 // アイテム
